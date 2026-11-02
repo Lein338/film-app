@@ -182,3 +182,45 @@ function loc_(ss, rowKey, loc) {
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
+
+/* ---------- 시트 안에서 필름 등록 ('요약' 시트 K7 체크박스) ---------- */
+// 원래 쓰던 기능 그대로. 요약 시트 7행에 입력하고 K7을 체크하면 135/120 탭에 한 줄 추가.
+function onEdit(e) {
+  const range = e.range;
+  const sheet = range.getSheet();
+
+  // '요약' 시트의 K7(등록 체크박스) 셀이 TRUE로 바뀌었을 때만 실행
+  if (sheet.getName() !== '요약' || range.getA1Notation() !== 'K7' || range.getValue() !== true) {
+    return;
+  }
+
+  // B7:J7 입력 데이터: [판형, 매수, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고]
+  const inputRow = sheet.getRange('B7:J7').getValues()[0];
+  const formatType = String(inputRow[0]).trim();
+
+  if (!formatType) {
+    SpreadsheetApp.getUi().alert('판형을 선택해주세요.');
+    range.setValue(false);
+    return;
+  }
+
+  const ss = e.source;
+
+  if (formatType === '135') {
+    // 135 탭: 판형, 매수, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고
+    const targetSheet = ss.getSheetByName('135');
+    if (targetSheet) {
+      targetSheet.appendRow([inputRow[0], inputRow[1], inputRow[2], inputRow[3], inputRow[4], inputRow[5], inputRow[6], inputRow[7], inputRow[8]]);
+    }
+  } else if (formatType === '120') {
+    // 120 탭: 판형, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고 (매수 없음)
+    const targetSheet = ss.getSheetByName('120');
+    if (targetSheet) {
+      targetSheet.appendRow([inputRow[0], inputRow[2], inputRow[3], inputRow[4], inputRow[5], inputRow[6], inputRow[7], inputRow[8]]);
+    }
+  }
+
+  // 등록 완료 후 입력란 초기화 및 체크박스 해제
+  sheet.getRange('C7:J7').clearContent();
+  range.setValue(false);
+}
