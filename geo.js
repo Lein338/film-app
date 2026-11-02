@@ -40,8 +40,9 @@ const Place = {
       const j = await (await fetch(u)).json();
       const a = j.address || {};
       const area = [a.borough || a.city_district || a.county || a.city || a.town, a.quarter || a.neighbourhood || a.suburb || a.village || a.hamlet].filter(Boolean);
-      const poi = j.name && !/^(road|residential|highway)$/.test(j.addresstype || j.type || "") && !area.includes(j.name) ? j.name : "";
-      const name = [...new Set([...(poi ? [poi] : []), ...area])].slice(0, 2).join(" · ") || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
+      // 길 이름은 빼고, 역·공원·카페 같은 장소 이름만 앞에 붙임
+      const poi = j.name && /^(amenity|tourism|leisure|historic|shop|railway|natural|aeroway|building)$/.test(j.category || "") && !area.includes(j.name) ? j.name : "";
+      const name = [...new Set([...(poi ? [poi] : []), ...area])].slice(0, 2).join(" ") || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
       this.cache.unshift({ lat: p.lat, lng: p.lng, name }); this.cache = this.cache.slice(0, 200);
       try { LS.set("placeCache", this.cache) } catch (e) {}
       return name;
@@ -96,7 +97,7 @@ const Shoot = {
     $("shoot").hidden = false; document.body.classList.add("lock");
     Geo.start(this.onFix); this.paint();
   },
-  close() { $("shoot").hidden = true; document.body.classList.remove("lock"); Geo.stop(this.onFix); this.logId = null; render(); },
+  close() { this.issued = null; $("shoot").hidden = true; document.body.classList.remove("lock"); Geo.stop(this.onFix); this.logId = null; render(); },
   end() { LS.set("activeRoll", null); this.close(); },
   onFix: () => Shoot.paint(),
   log() { return state.logs.find(l => l.id === this.logId); },
@@ -127,6 +128,7 @@ const Shoot = {
     const old = $("sh-note"), keep = old ? old.value : "", focused = old && document.activeElement === old;
     box.innerHTML = `
       <div class="sh-top"><button class="navbtn" data-x>닫기</button><button class="navbtn" data-endroll>촬영 끝</button></div>
+      ${this.issued === l.no ? `<div class="sh-issued">새 롤 번호 <b>${esc(l.no)}</b><span>필름 통에 적어 두세요</span></div>` : ""}
       <div class="sh-head"><span class="no">${esc(l.no)}</span> ${esc(l.brand)} ${esc(l.name || l.iso)}</div>
       <div class="sh-count"><b>${n}</b><span>${exp ? `/ ${exp}` : "컷"}</span></div>
       <div class="sh-loc">${loc}</div>
