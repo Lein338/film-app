@@ -253,10 +253,27 @@ body.lock{overflow:hidden}
   display:flex;flex-direction:column;align-items:center;gap:12px}
 .sheet-full>*{width:100%;max-width:520px;flex:none}
 .sh-top{display:flex;justify-content:space-between;padding:8px 0}
-.sh-head{font-size:17px;font-weight:600;text-align:center}
+.sh-head{display:grid;justify-items:center;gap:3px;text-align:center}
+.sh-head b{font-size:24px;font-weight:700}
+.sh-head>span{font-size:14px;color:var(--muted)}
+.sh-head .no{font-size:13px}
+.sh-rolls{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px}
+.sh-rolls::-webkit-scrollbar{display:none}
+.sh-rolls button{appearance:none;border:0;flex:none;display:grid;text-align:left;gap:1px;padding:9px 14px;border-radius:18px;background:var(--fill);cursor:pointer;max-width:200px}
+.sh-rolls button b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-rolls button span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-rolls button[aria-pressed="true"]{background:var(--tint)}
+.sh-rolls button[aria-pressed="true"] b,.sh-rolls button[aria-pressed="true"] span{color:#fff}
+.sh-rolls .sh-add{background:none;box-shadow:inset 0 0 0 1px var(--line);place-items:center}
+.sh-rolls .sh-add b{font-size:16px;color:var(--tint)}
+.sh-cam{display:flex;gap:8px;align-items:center}
+.sh-cam input{border-radius:999px;flex:1}
+.sh-sub{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap}
 .sh-issued{display:grid;justify-items:center;gap:2px;padding:12px;border-radius:22px;background:var(--tint-soft)}
 .sh-issued b{font-family:var(--round);font-size:34px;color:var(--tint);line-height:1.1}
 .sh-issued span{font-size:13px;color:var(--muted)}
+.sh-issued b{font-family:var(--sans)!important;font-size:22px!important;color:var(--ink)!important}
+.sh-issued em{font-style:normal;font-weight:700;color:var(--tint)}
 .sh-count{display:flex;justify-content:center;align-items:baseline;gap:6px}
 .sh-count b{font-family:var(--round);font-size:96px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
 .sh-count span{font-size:22px;color:var(--muted);font-weight:600}
@@ -765,6 +782,6 @@ render();
 loadSheet(false);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
-<script src="geo.js?v=15"></script>
+<script src="geo.js?v=16"></script>
 </body>
 </html>

@@ -90,15 +90,46 @@ function placesOf(l) {
 /* ---------- 촬영 화면 ---------- */
 const APS = ["1.4", "2", "2.8", "4", "5.6", "8", "11", "16", "22"];
 const SSS = ["1/1000", "1/500", "1/250", "1/125", "1/60", "1/30", "1/15", "1/8", "1/4", "1/2", "1s", "B"];
+// 여러 롤을 동시에 촬영 중일 수 있음 (카메라 여러 대, 한 롤을 며칠에 나눠 찍기)
+const rollLabel = l => `${l.cam ? l.cam + " · " : ""}${l.brand} ${l.name || l.iso}`.trim();
+const Active = {
+  ids() {
+    let a = LS.get("activeRolls", null);
+    if (!Array.isArray(a)) { const old = LS.get("activeRoll", null); a = old ? [old] : []; LS.set("activeRolls", a); }
+    return a;
+  },
+  list() { return this.ids().map(id => state.logs.find(l => l.id === id)).filter(l => l && (l.stage || "shot") === "shot"); },
+  add(id) { const a = this.ids().filter(x => x !== id); a.push(id); LS.set("activeRolls", a); LS.set("currentRoll", id); },
+  remove(id) { LS.set("activeRolls", this.ids().filter(x => x !== id)); }
+};
 const Shoot = {
   logId: null, sel: LS.get("shootSel", { ap: "", ss: "" }), flash: 0,
   open(logId) {
-    this.logId = logId; LS.set("activeRoll", logId);
+    logId = logId || LS.get("currentRoll", null) || (Active.list()[0] || {}).id;
+    if (!logId) return;
+    this.logId = logId; Active.add(logId);
     $("shoot").hidden = false; document.body.classList.add("lock");
     Geo.start(this.onFix); this.paint();
   },
+  switchTo(id) { this.logId = id; LS.set("currentRoll", id); this.issued = null; this.paint(); },
   close() { this.issued = null; $("shoot").hidden = true; document.body.classList.remove("lock"); Geo.stop(this.onFix); this.logId = null; render(); },
-  end() { LS.set("activeRoll", null); this.close(); },
+  end() {
+    Active.remove(this.logId); this.issued = null;
+    const rest = Active.list();
+    if (rest.length) this.switchTo(rest[rest.length - 1].id); else this.close();
+  },
+  async setCam() {
+    const v = ($("sh-cam") && $("sh-cam").value.trim()) || ""; if (!v) return;
+    try { applySnap(await post({ action: "update", id: this.logId, fields: { cam: v } })); } catch (e) { setAction(`<span class="msg">카메라를 저장하지 못했어요.</span>`); }
+    this.paint();
+  },
+  skip() {
+    const l = this.log(); if (!l) return;
+    const fr = Frames.all(l.id), n = (fr.length ? Math.max(...fr.map(f => f.n)) : 0) + 1;
+    Frames.put({ id: "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), logId: l.id, n, at: new Date().toISOString(),
+      lat: null, lng: null, acc: null, place: "", ap: "", ss: "", note: "[건너뜀]" });
+    this.paint();
+  },
   onFix: () => Shoot.paint(),
   log() { return state.logs.find(l => l.id === this.logId); },
   async snap() {
@@ -125,18 +156,22 @@ const Shoot = {
     const loc = Geo.err ? `<span class="bad">${esc(Geo.err)}</span>` : fix ? `${esc(Place.near(fix) || "위치 잡음")} <em>±${Math.round(fix.acc)}m</em>` : "위치 찾는 중…";
     const chips = (k, list) => `<div class="sh-chips">${list.map(v => `<button data-sel="${k}" data-v2="${v}" aria-pressed="${this.sel[k] === v}">${k === "ap" ? "f/" + v : v}</button>`).join("")}</div>`;
     const old = $("sh-note"), keep = old ? old.value : "", focused = old && document.activeElement === old;
+    const act = Active.list();
+    const tabs = `<div class="sh-rolls">${act.map(a => `<button data-rolltab="${esc(a.id)}" aria-pressed="${a.id === l.id}"><b>${esc(a.cam || "카메라 미정")}</b><span>${esc(a.brand)} ${esc(a.name || a.iso)} · ${Frames.all(a.id).length}컷</span></button>`).join("")}<button class="sh-add" data-addroll><b>+</b><span>롤 추가</span></button></div>`;
     box.innerHTML = `
-      <div class="sh-top"><button class="navbtn" data-x>닫기</button><button class="navbtn" data-endroll>촬영 종료</button></div>
-      ${this.issued === l.no ? `<div class="sh-issued">새 롤 번호 <b>${esc(l.no)}</b><span>필름 통에 적어 두세요</span></div>` : ""}
-      <div class="sh-head"><span class="no">${esc(l.no)}</span> ${esc(l.brand)} ${esc(l.name || l.iso)}</div>
+      <div class="sh-top"><button class="navbtn" data-x>닫기</button><button class="navbtn" data-endroll>이 롤 촬영 종료</button></div>
+      ${tabs}
+      ${this.issued === l.no ? `<div class="sh-issued">새로 시작한 롤<b>${esc(l.brand)} ${esc(l.name || l.iso)}</b><span>필름 통에 <em>${esc(l.no)}</em>라고 적어 두면 나중에 찾기 쉬워요</span></div>` : ""}
+      <div class="sh-head"><b>${esc(l.brand)} ${esc(l.name || l.iso)}</b><span>${esc(l.cam || "카메라 미정")}${l.ei ? ` · EI ${esc(l.ei)}` : ""} · <span class="no">${esc(l.no)}</span></span></div>
+      ${l.cam ? "" : `<div class="sh-cam"><input id="sh-cam" placeholder="이 롤을 넣은 카메라 (예: FM2)" list="sh-cams" autocomplete="off"><button class="act" data-setcam>저장</button><datalist id="sh-cams">${[...new Set(state.logs.map(x => x.cam).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("")}</datalist></div>`}
       <div class="sh-count"><b>${n}</b><span>컷</span></div>
       <div class="sh-loc">${loc}</div>
       <button class="sh-btn${Date.now() - this.flash < 400 ? " hit" : ""}" data-snap aria-label="${n + 1}번 컷 기록">찰칵</button>
-      <div class="sh-sub">${n + 1}번 컷을 찍을 때 누르세요 · 다 찍으면 촬영 종료</div>
+      <div class="sh-sub">${n + 1}번 컷을 찍을 때 누르세요 <button class="act quiet sm" data-skip>이 컷 건너뛰기</button></div>
       ${chips("ap", APS)}${chips("ss", SSS)}
       <input id="sh-note" class="sh-note" placeholder="이 컷 메모 (선택)" autocomplete="off">
       <div class="sh-sync">${wait ? (Frames.sending ? `${wait}컷 시트로 보내는 중…` : `${wait}컷 폰에 저장됨 · 연결되면 시트로 보내요`) : fr.length ? "모든 컷이 시트에 저장됐어요" : ""}</div>
-      <ul class="sh-list">${fr.slice().reverse().map(f => `<li><b>${f.n}</b><span>${new Date(f.at).toTimeString().slice(0, 5)} · ${esc(f.place || (f.lat ? "위치 있음" : "위치 없음"))}${f.ap ? ` · f/${esc(f.ap)}` : ""}${f.ss ? ` · ${esc(f.ss)}` : ""}${f.note ? ` · ${esc(f.note)}` : ""}</span><button class="act quiet" data-fdel="${esc(f.id)}">지우기</button></li>`).join("")}</ul>`;
+      <ul class="sh-list">${fr.slice().reverse().map(f => `<li><b>${f.n}</b><span>${new Date(f.at).toTimeString().slice(0, 5)} · ${f.note === "[건너뜀]" ? "건너뜀" : esc(f.place || (f.lat ? "위치 있음" : "위치 없음"))}${f.ap ? ` · f/${esc(f.ap)}` : ""}${f.ss ? ` · ${esc(f.ss)}` : ""}${f.note && f.note !== "[건너뜀]" ? ` · ${esc(f.note)}` : ""}</span><button class="act quiet" data-fdel="${esc(f.id)}">지우기</button></li>`).join("")}</ul>`;
     const nn = $("sh-note"); if (nn) { nn.value = keep; if (focused) nn.focus({ preventScroll: true }); }
     paintPill();
   },
@@ -150,11 +185,12 @@ const Shoot = {
 
 // 촬영 중인 롤이 있으면 화면 아래에 바로가기
 function paintPill() {
-  const id = LS.get("activeRoll", null), l = id && state.logs.find(x => x.id === id), pill = $("rollpill");
-  if (!pill) return;
-  if (!l || !$("shoot").hidden || (l.stage && l.stage !== "shot")) { pill.hidden = true; return; }
-  const n = Frames.all(l.id).length;
-  pill.hidden = false; pill.innerHTML = `<button data-shoot="${esc(l.id)}">촬영 중 <b>${esc(l.no)}</b> · ${n}컷</button>`;
+  const pill = $("rollpill"); if (!pill) return;
+  const act = Active.list();
+  if (!act.length || !$("shoot").hidden) { pill.hidden = true; return; }
+  const cur = act.find(l => l.id === LS.get("currentRoll", null)) || act[act.length - 1];
+  pill.hidden = false;
+  pill.innerHTML = `<button data-shoot="${esc(cur.id)}">촬영 중 · <b>${esc(rollLabel(cur))}</b>${act.length > 1 ? ` 외 ${act.length - 1}롤` : ` · ${Frames.all(cur.id).length}컷`}</button>`;
 }
 
 /* ---------- 지도 ---------- */
@@ -222,7 +258,7 @@ const Exif = {
         <div class="ex-off"><span>첫 번째 파일은</span><button class="pick" data-off="-1">−</button><b>${this.offset}번 컷</b><button class="pick" data-off="1">+</button></div>
         <p class="ex-hint">파일 이름 순서대로 컷을 맞춰요. 스캔에 0번이나 00번 컷이 섞여 있으면 위 숫자로 맞추세요.</p>
         <ul class="ex-list">${this.files.map((f, i) => { const m = this.frameFor(i);
-          return `<li><span class="fn">${esc(f.name)}</span><span class="${m && m.lat ? "" : "miss"}">${m ? `${m.n}번 컷 · ${new Date(m.at).toTimeString().slice(0, 5)}${m.place ? " · " + esc(m.place) : ""}${m.lat ? "" : " · 위치 없음"}` : "맞는 컷 없음 · 그대로 둠"}</span></li>`; }).join("")}</ul>
+          return `<li><span class="fn">${esc(f.name)}</span><span class="${m && m.lat ? "" : "miss"}">${m ? `${m.n}번 컷 · ${new Date(m.at).toTimeString().slice(0, 5)}${m.place ? " · " + esc(m.place) : ""}${m.note === "[건너뜀]" ? " · 건너뜀" : m.lat ? "" : " · 위치 없음"}` : "맞는 컷 없음 · 그대로 둠"}</span></li>`; }).join("")}</ul>
         <div class="btns">${this.out.length ? `<button class="rowbtn" data-exshare>사진에 저장 (${this.out.length}장)</button>` : `<button class="rowbtn" data-exrun ${this.busy ? "disabled" : ""}>${this.busy ? "넣는 중…" : "위치와 촬영 시간 넣기"}</button>`}</div>` : `<p class="ex-hint">현상소에서 받은 JPG를 고르면, 촬영할 때 남긴 컷 기록으로 GPS·촬영 시간·필름 정보를 파일 안에 넣어 드려요. 원본은 바뀌지 않고 새 파일이 만들어져요.</p>`}
       ${this.msg ? `<p class="ex-hint">${this.msg}</p>` : ""}`;
   },
@@ -298,6 +334,10 @@ document.addEventListener("click", e => {
   if (ds.shoot) { Shoot.open(ds.shoot); return; }
   if (ds.x !== undefined) { Shoot.close(); return; }
   if (ds.endroll !== undefined) { Shoot.end(); return; }
+  if (ds.rolltab) { Shoot.switchTo(ds.rolltab); return; }
+  if (ds.addroll !== undefined) { Shoot.close(); state.view = "inv"; history.replaceState(null, "", location.pathname + location.search); render(); setAction(`<span class="msg">새로 넣은 필름을 누르고 "한 롤 썼어요"를 누르세요. 촬영 중인 롤에 추가돼요.</span>`); return; }
+  if (ds.setcam !== undefined) { Shoot.setCam(); return; }
+  if (ds.skip !== undefined) { Shoot.skip(); return; }
   if (ds.snap !== undefined) { Shoot.snap(); return; }
   if (ds.sel) { Shoot.setSel(ds.sel, ds.v2); return; }
   if (ds.fdel) { Shoot.del(ds.fdel); return; }
