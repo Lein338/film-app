@@ -313,6 +313,25 @@ body.lock{overflow:hidden}
 .ex-list .miss{color:var(--faint)}
 .sheet-full .rowbtn{appearance:none;border:0;cursor:pointer;height:48px;padding:0 22px;border-radius:999px;background:var(--tint);color:#fff;font-size:16px;font-weight:600}
 .sheet-full .btns{display:flex;justify-content:center}
+
+.sh-row2{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.sh-chips .more{background:none!important;box-shadow:inset 0 0 0 1px var(--line);color:var(--tint)}
+.sh-list li.pt b{font-family:var(--sans);font-size:12px;color:var(--ok)}
+.rg-btns{justify-content:flex-start!important;flex-wrap:wrap;gap:8px}
+.rg-btns .rowbtn{height:44px!important;font-size:15px!important;display:inline-flex;align-items:center;cursor:pointer}
+.rg-btns .rowbtn.soft{background:var(--fill)!important;color:var(--ink)!important}
+.rg-list{list-style:none;margin:0;padding:0}
+.rg-list li{display:grid;gap:8px;padding:12px 0;border-bottom:.5px solid var(--line)}
+.rg-info{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.rg-info b{font-size:17px}
+.rg-info span{font-size:13px;color:var(--muted)}
+.rg-info .rg-kind{font-size:11px;font-weight:700;color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent);padding:2px 8px;border-radius:999px}
+.rg-in{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--muted)}
+.rg-in input{width:76px;flex:none;text-align:center;border-radius:12px;padding:8px}
+.rg-sum{display:grid;gap:4px;padding:12px 14px;border-radius:16px;background:var(--fill2);font-size:14px}
+.rg-sum div{display:flex;gap:10px}
+.rg-sum b{min-width:64px;font-variant-numeric:tabular-nums}
+.rg-sum span{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -356,6 +375,7 @@ body.lock{overflow:hidden}
 <div id="rollpill" hidden></div>
 <div id="shoot" class="sheet-full" hidden></div>
 <div id="exif" class="sheet-full" hidden></div>
+<div id="ranges" class="sheet-full" hidden></div>
 
 <script>
 const TYPES=[
@@ -523,7 +543,7 @@ function entryHtml(l){
   const brand=l.brand||(l.label||"").split(" ")[0];
   const name=l.brand?(l.name||l.iso||""):(l.label||"").split(" ").slice(1).join(" ");
   const meta=[l.fmt,l.ei?`EI ${l.ei}`:l.iso&&`ISO ${l.iso}`,l.cam].filter(Boolean).join( " · ");
-  let html=`<div class="entry" style="--c:${ty.c}"><button class="erow" id="e-${esc(l.id)}" data-log="${esc(l.id)}" aria-expanded="${open}"><div class="dt">${d.getDate()}<small>${WD[d.getDay()]}요일</small></div><span class="bar"></span><div class="body"><div class="name">${l.no?`<span class="no">${esc(l.no)}</span>`:""}${esc(brand)}<small>${esc(name)}</small></div>${meta?`<div class="meta edge">${esc(meta)}</div>`:""}${(()=>{const p=typeof placesOf==="function"?placesOf(l):l.place;const n=typeof Frames!=="undefined"?Frames.all(l.id).length:0;return p||n?`<div class="when">${esc(p)}${n?`${p?" · ":""}${n}컷 기록`:""}</div>`:""})()}</div><div class="st"><span class="stg ${stage}">${STAGES[stage]}</span>${pend?`<span class="sheet">시트 반영 전</span>`:""}</div></button>`;
+  let html=`<div class="entry" style="--c:${ty.c}"><button class="erow" id="e-${esc(l.id)}" data-log="${esc(l.id)}" aria-expanded="${open}"><div class="dt">${d.getDate()}<small>${WD[d.getDay()]}요일</small></div><span class="bar"></span><div class="body"><div class="name">${l.no?`<span class="no">${esc(l.no)}</span>`:""}${esc(brand)}<small>${esc(name)}</small></div>${meta?`<div class="meta edge">${esc(meta)}</div>`:""}${(()=>{const p=typeof placesOf==="function"?placesOf(l):l.place;const n=typeof Frames!=="undefined"?Frames.shots(l.id).length:0;return p||n?`<div class="when">${esc(p)}${n?`${p?" · ":""}${n}컷 기록`:""}</div>`:""})()}</div><div class="st"><span class="stg ${stage}">${STAGES[stage]}</span>${pend?`<span class="sheet">시트 반영 전</span>`:""}</div></button>`;
   if(open&&state.form&&state.form.mode==="edit"&&state.form.id===l.id){
     html+=formHtml({mode:"edit",iso:+l.iso||0,advice:null});
   }else if(open){
@@ -537,8 +557,9 @@ function entryHtml(l){
       acts+=`<div class="fact"><button class="act" data-edit="${id}" ${dis}>메모 고치기</button><button class="act quiet" data-del="${id}" ${dis}>기록 지우고 수량 되돌리기</button></div>`;
     }
     const tag=l.no?`<div class="tag"><b>${esc(l.no)}</b><span>${esc(brand)} ${esc(name)} · ${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}${l.place?` · ${esc(l.place)}`:""}</span></div>`:"";
-    const frs=typeof Frames!=="undefined"?Frames.all(l.id):[],hasGeo=frs.some(f=>f.lat)||l.lat;
-    const fblock=`<div class="fr">${frs.length?`<ol class="frl">${frs.map(f=>`<li><b>${f.n}</b><span>${new Date(f.at).toTimeString().slice(0,5)} · ${esc(f.place||(f.lat?"위치 있음":"위치 없음"))}${f.ap?` · f/${esc(f.ap)}`:""}${f.ss?` · ${esc(f.ss)}`:""}${f.note?` · ${esc(f.note)}`:""}</span></li>`).join("")}</ol>`:""}<div class="fact">${state.canUse&&stage==="shot"?`<button class="act" data-shoot="${esc(l.id)}">${frs.length?"촬영 이어서":"촬영 시작"}</button>`:""}${hasGeo?`<button class="act quiet" data-mapl="${esc(l.id)}">지도</button>`:""}${frs.length?`<button class="act quiet" data-exif="${esc(l.id)}">스캔에 위치 넣기</button>`:""}</div></div>`;
+    const frs=typeof Frames!=="undefined"?Frames.shots(l.id):[],pts=typeof Frames!=="undefined"?Frames.points(l.id):[],hasGeo=frs.some(f=>f.lat)||pts.some(p=>p.lat)||l.lat;
+    const segs=pts.filter(p=>p.start).sort((a,b)=>a.start-b.start);
+    const fblock=`<div class="fr">${frs.length?`<ol class="frl">${frs.map(f=>`<li><b>${f.n}</b><span>${new Date(f.at).toTimeString().slice(0,5)} · ${esc(f.place||(f.lat?"위치 있음":"위치 없음"))}${f.ap?` · f/${esc(f.ap)}`:""}${f.ss?` · ${esc(f.ss)}`:""}${f.note?` · ${esc(f.note)}`:""}</span></li>`).join("")}</ol>`:""}<div class="fact">${state.canUse&&stage==="shot"?`<button class="act" data-shoot="${esc(l.id)}">${frs.length?"촬영 이어서":"촬영 시작"}</button>`:""}${hasGeo?`<button class="act quiet" data-mapl="${esc(l.id)}">지도</button>`:""}${state.canUse?`<button class="act quiet" data-ranges="${esc(l.id)}">구간 정하기${pts.length?` (${pts.length}곳)`:""}</button>`:""}${frs.length||segs.length?`<button class="act quiet" data-exif="${esc(l.id)}">스캔에 위치 넣기</button>`:""}</div>${segs.length?`<div class="rg-sum">${segs.map((p,i)=>`<div><b>${segs[i+1]?`${p.start}~${segs[i+1].start-1}컷`:`${p.start}컷~`}</b><span>${esc(p.place||"위치만 있음")}</span></div>`).join("")}</div>`:""}</div>`;
     html+=`<div class="detail">${tag}${fblock}<div class="flow"><b class="${stage==="shot"?"on":""}">현상 전</b><i></i><b class="${stage==="lab"?"on":""}">현상 맡김</b><i></i><b class="${stage==="scan"?"on":""}">스캔 완료</b></div><dl>${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>${acts}</div>`;
   }
   return html+`</div>`;
@@ -782,6 +803,6 @@ render();
 loadSheet(false);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
-<script src="geo.js?v=16"></script>
+<script src="geo.js?v=17"></script>
 </body>
 </html>

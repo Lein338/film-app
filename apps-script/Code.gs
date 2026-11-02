@@ -16,7 +16,8 @@ const SHEETS = ['135', '120'];
 const LOG = '사용기록';
 const LOC = '보관위치';
 const FR = '컷기록';
-const FR_HEAD = ['롤 번호', '컷', '시간', '위도', '경도', '정확도(m)', '장소', '조리개', '셔터', '메모', 'id', 'logId'];
+const FR_HEAD = ['롤 번호', '컷', '시간', '위도', '경도', '정확도(m)', '장소', '조리개', '셔터', '메모', 'id', 'logId', '종류', '시작 컷'];
+const KIND = { frame: '컷', checkin: '체크인', photo: '아이폰 사진' };
 const TZ = 'Asia/Seoul';
 const LOG_HEAD = ['번호', '날짜', '판형', '브랜드', '필름명', '감도', '유형', '유통기한', 'EI', '카메라', '장소', '메모', '현상 단계', '현상소', '맡긴 날', '스캔 받은 날', 'id', 'key', '위도', '경도'];
 const STAGE = { shot: '현상 전', lab: '현상 맡김', scan: '스캔 완료' };
@@ -187,13 +188,19 @@ function frameSheet_(ss) {
     sh.setFrozenRows(1);
     sh.hideColumns(11, 2); // id, logId
   }
+  if (sh.getLastColumn() < FR_HEAD.length) { // 예전 탭에 종류·시작 컷 칸 추가
+    sh.getRange(1, 1, 1, FR_HEAD.length).setValues([FR_HEAD]).setFontWeight('bold');
+    sh.getRange('M:N').setNumberFormat('@');
+  }
   return sh;
 }
 function readFrames_(ss) {
   const sh = ss.getSheetByName(FR);
   if (!sh || sh.getLastRow() < 2) return [];
+  const back = { '컷': 'frame', '체크인': 'checkin', '아이폰 사진': 'photo' };
   return sh.getRange(2, 1, sh.getLastRow() - 1, FR_HEAD.length).getDisplayValues().filter(function (r) { return r[10]; }).map(function (r) {
-    return { no: r[0], n: +r[1] || 0, at: r[2], lat: r[3], lng: r[4], acc: r[5], place: r[6], ap: r[7], ss: r[8], note: r[9], id: r[10], logId: r[11] };
+    return { no: r[0], n: +r[1] || 0, at: r[2], lat: r[3], lng: r[4], acc: r[5], place: r[6], ap: r[7], ss: r[8], note: r[9], id: r[10], logId: r[11],
+      kind: back[r[12]] || 'frame', start: r[13] === '' ? null : +r[13] };
   });
 }
 function frameRow_(sh, id) {
@@ -207,9 +214,11 @@ function frame_(ss, f) {
   const sh = frameSheet_(ss), ls = logSheet_(ss), lr = logRow_(ls, f.logId);
   if (lr < 0) return; // 롤 기록이 지워졌으면 무시
   const no = ls.getRange(lr, 1).getDisplayValue();
-  const row = [no, String(f.n || ''), fmt_(f.at, true) + (f.at ? ':' + Utilities.formatDate(new Date(f.at), TZ, 'ss') : ''),
+  const isShot = !f.kind || f.kind === 'frame';
+  const row = [no, isShot ? String(f.n || '') : '', fmt_(f.at, true) + (f.at ? ':' + Utilities.formatDate(new Date(f.at), TZ, 'ss') : ''),
     f.lat == null ? '' : String(f.lat), f.lng == null ? '' : String(f.lng), f.acc == null ? '' : String(Math.round(f.acc)),
-    f.place || '', f.ap || '', f.ss || '', f.note || '', f.id, f.logId];
+    f.place || '', f.ap || '', f.ss || '', f.note || '', f.id, f.logId,
+    KIND[f.kind || 'frame'] || KIND.frame, f.start == null || f.start === '' ? '' : String(f.start)];
   const r = frameRow_(sh, f.id);
   if (r > 0) sh.getRange(r, 1, 1, row.length).setValues([row]);
   else sh.appendRow(row);
