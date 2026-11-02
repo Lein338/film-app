@@ -336,23 +336,10 @@ function advice(r){
 }
 
 /* 사용 기록 ↔ 시트 */
-function pendingFor(r){
-  if(!(r.qty>0))return[];
-  const logs=state.logs.filter(l=>l.key===r.key&&l.base>=r.qty).sort((a,b)=>a.at<b.at?-1:1);
-  if(!logs.length)return[];
-  const applied=Math.max(0,Math.max(...logs.map(l=>l.base))-r.qty);
-  return logs.slice(applied).slice(-r.qty);
-}
-function isPending(log){const r=state.rows.find(x=>x.key===log.key);return!!r&&pendingFor(r).some(l=>l.id===log.id)}
-function enrich(r){const p=pendingFor(r);return{...r,used:p.length,left:r.qty>0?r.qty-p.length:r.qty,pend:p,loc:state.locs[r.key]||""}}
-function nextNo(at){const yy=pad(new Date(at).getFullYear()%100);const max=Math.max(0,...state.logs.filter(l=>typeof l.no==="string"&&l.no.startsWith(yy+"-")).map(l=>parseInt(l.no.slice(3),10)||0));return`${yy}-${String(max+1).padStart(3,"0")}`}
-const normNo=q=>{const m=/^(?:(\d{2})\s*[-.\s]\s*)?0*(\d{1,4})$/.exec(q.trim());return m?{yy:m[1]||null,n:+m[2]}:null};
-function matches(l,q){
-  const nq=normNo(q);
-  if(nq&&l.no){const[yy,n]=l.no.split("-");if(+n===nq.n&&(!nq.yy||nq.yy===yy))return true}
-  const hay=[l.no,l.brand,l.name,l.label,l.cam,l.place,l.note,l.lab,l.iso&&`iso ${l.iso}`].filter(Boolean).join(" ").toLowerCase();
-  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w=>hay.includes(w));
-}
+function pendingFor(){return[]}
+function isPending(){return false}
+const lastLog=k=>state.logs.filter(l=>l.key===k).sort((a,b)=>a.at<b.at?-1:1).pop();
+function enrich(r){return{...r,used:0,left:r.qty,pend:[],loc:state.locs[r.key]||""}}
 const dayLabel=iso=>{const t=new Date(iso);return`${t.getMonth()+1}월 ${t.getDate()}일`};
 const cams=()=>[...new Set([...state.logs].sort((a,b)=>a.at<b.at?1:-1).map(l=>l.cam).filter(Boolean))];
 const places=()=>[...new Set([...state.logs].sort((a,b)=>a.at<b.at?1:-1).map(l=>l.place).filter(Boolean))];
@@ -429,8 +416,8 @@ function renderInv(){
         if(state.issued&&state.issued.key===r.key)extra+=`<div class="issued"><b>${esc(state.issued.no)}</b><span>이 롤의 번호예요. 필름 통이나 네거 슬리브에 적어 두세요.</span></div>`;
         if(state.canUse){
           const k=esc(r.key);
-          extra+=`<div class="acts">${r.qty>0&&r.left>0?`<button class="act" data-use="${k}" ${state.busy?"disabled":""}>한 롤 썼어요</button>`:""}${r.used?`<button class="act" data-undo="${k}" ${state.busy?"disabled":""}>되돌리기</button><span class="hint">${dayLabel(r.pend[r.pend.length-1].at)}에 씀</span>`:""}<span class="locset">보관 ${LOCS.map(l=>`<button class="pick" data-setloc="${l}" data-key="${k}" aria-pressed="${r.loc===l}" ${state.busy?"disabled":""}>${l}</button>`).join("")}</span></div>`;
-        }else extra+=`<div class="acts"><span class="hint">기록은 이 페이지 주인만 남길 수 있어요.</span></div>`;
+          extra+=`<div class="acts">${r.qty>0&&r.left>0?`<button class="act" data-use="${k}" ${state.busy?"disabled":""}>한 롤 썼어요</button>`:""}${(()=>{const L=lastLog(r.key);return L?`<button class="act quiet" data-undo="${k}" ${state.busy?"disabled":""}>되돌리기</button><span class="hint">${esc(L.no)} · ${dayLabel(L.at)}에 씀</span>`:""})()}<span class="locset">보관 ${LOCS.map(l=>`<button class="pick" data-setloc="${l}" data-key="${k}" aria-pressed="${r.loc===l}" ${state.busy?"disabled":""}>${l}</button>`).join("")}</span></div>`;
+        }else extra+=`<div class="acts"><span class="hint">시트 연결이 끝나면 여기서 기록할 수 있어요.</span></div>`;
       }
       return`<li class="${s.g}" style="--c:${t.c}"><button class="row" id="row-${hashKey(r.key)}" data-row="${esc(r.key)}" aria-expanded="${open}"><span class="bar"></span><div class="body"><div class="name">${title}</div><div class="meta edge">${esc(meta)}</div>${when?`<div class="when">${when}</div>`:""}</div>${qty}</button>${extra}</li>`;
     }).join("")}</ul></section>`;
@@ -456,7 +443,7 @@ function entryHtml(l){
       if(stage==="shot")acts=`<div class="labin"><input id="l-lab" placeholder="현상소 이름" list="dl-labs" autocomplete="off" value="${esc(state.labDraft)}"><button class="act" data-stage="lab" data-id="${id}" ${dis}>현상 맡겼어요</button></div><datalist id="dl-labs">${[...new Set(state.logs.map(x=>x.lab).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`;
       if(stage==="lab")acts=`<div class="fact"><button class="act" data-stage="scan" data-id="${id}" ${dis}>스캔 받았어요</button><button class="act quiet" data-stage="shot" data-id="${id}" ${dis}>현상 전으로</button></div>`;
       if(stage==="scan")acts=`<div class="fact"><button class="act quiet" data-stage="lab" data-id="${id}" ${dis}>현상 맡김으로 되돌리기</button></div>`;
-      acts+=`<div class="fact"><button class="act" data-edit="${id}" ${dis}>메모 고치기</button>${pend?`<button class="act quiet" data-del="${id}" ${dis}>기록 지우기</button>`:""}</div>`;
+      acts+=`<div class="fact"><button class="act" data-edit="${id}" ${dis}>메모 고치기</button><button class="act quiet" data-del="${id}" ${dis}>기록 지우고 수량 되돌리기</button></div>`;
     }
     const tag=l.no?`<div class="tag"><b>${esc(l.no)}</b><span>${esc(brand)} ${esc(name)} · ${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}${l.place?` · ${esc(l.place)}`:""}</span></div>`:"";
     html+=`<div class="detail">${tag}<div class="flow"><b class="${stage==="shot"?"on":""}">현상 전</b><i></i><b class="${stage==="lab"?"on":""}">현상 맡김</b><i></i><b class="${stage==="scan"?"on":""}">스캔 완료</b></div><dl>${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>${acts}</div>`;
@@ -508,14 +495,15 @@ function renderLog(){
 }
 
 /* ---------- 동작 ---------- */
-let usedCol=null,locCol=null;
 function setAction(h){const a=$("action");a.hidden=!h;a.innerHTML=h||""}
 async function write(fn,after){
-  if(!usedCol||state.busy)return;
+  if(state.busy)return;
+  if(!state.canUse){setAction(`<span class="msg">Apps Script를 새 버전으로 업데이트해야 기록을 남길 수 있어요.</span>`);return}
   state.busy=true;render();
   try{await fn();if(after)after()}
   catch(e){
-    const msg=e&&e.code==="quota_exceeded"?"기록 공간이 가득 찼어요.":e&&e.code==="invalid_argument"?"기록은 이 페이지 주인만 남길 수 있어요.":"저장하지 못했어요. 잠시 뒤 다시 눌러 주세요.";
+    const msg=({no_stock:"시트 수량이 이미 0이에요.",row_not_found:"시트에서 이 필름을 찾지 못했어요. 시트에서 이름이나 기한을 바꿨다면 다시 불러온 뒤 눌러 주세요.",log_not_found:"이 기록이 시트에 없어요. 다시 불러와 주세요.",bad_action:"Apps Script를 새 버전으로 업데이트해 주세요.",bad_key:"키가 맞지 않아요. 설정을 확인해 주세요."})[e&&e.code]||"시트에 저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.";
+    if(e&&(e.code==="row_not_found"||e.code==="log_not_found"))loadSheet(false);
     setAction(`<span class="msg">${msg}</span>`);
   }finally{state.busy=false;render()}
 }
@@ -534,30 +522,28 @@ function openEdit(id){
 }
 function saveForm(){
   const f=state.form,d=state.draft;if(!f)return;
-  const fields={cam:(d.cam||"").trim(),place:(d.place||"").trim(),note:(d.note||"").trim(),ei:cleanEi(d.ei)};
+  const fields={cam:(d.cam||"").trim(),place:(d.place||"").trim(),note:(d.note||"").trim(),ei:cleanEi(d.ei)||""};
   if(f.mode==="new"){
     const r=state.rows.find(x=>x.key===f.key);if(!r)return;
-    const at=atFromDate(d.date),no=nextNo(at);
-    write(()=>usedCol.add({no,key:r.key,base:r.qty,at,label:label(r),fmt:r.fmt,brand:r.brand,name:r.name,iso:r.iso,type:r.type,expiry:r.expiry,stage:"shot",...fields}),
-      ()=>{state.form=null;state.issued={key:r.key,no}});
+    write(()=>api({action:"use",rowKey:r.key,at:atFromDate(d.date),fields}),
+      ()=>{state.form=null;const L=lastLog(r.key);state.issued={key:r.key,no:L?L.no:""}});
   }else{
     const l=state.logs.find(x=>x.id===f.id);if(!l)return;
     const upd={...fields};if(d.date&&d.date!==ymd(new Date(l.at)))upd.at=atFromDate(d.date);
-    write(()=>usedCol.doc(f.id).update(upd),()=>{state.form=null});
+    write(()=>api({action:"update",id:f.id,fields:upd}),()=>{state.form=null});
   }
 }
-function undoRoll(key){const r=state.rows.find(x=>x.key===key);if(!r)return;const p=pendingFor(r);if(p.length)write(()=>usedCol.doc(p[p.length-1].id).delete())}
-function removeLog(id){write(()=>usedCol.doc(id).delete(),()=>{if(state.openLog===id)state.openLog=null})}
+function undoRoll(key){const L=lastLog(key);if(L)write(()=>api({action:"undo",id:L.id}),()=>{state.issued=null})}
+function removeLog(id){write(()=>api({action:"undo",id}),()=>{if(state.openLog===id)state.openLog=null})}
 function setStage(id,stage){
   const upd={stage};
   if(stage==="lab"){upd.lab=(state.labDraft||"").trim()||(state.logs.find(x=>x.id===id)||{}).lab||"";upd.labAt=new Date().toISOString()}
   if(stage==="scan")upd.scanAt=new Date().toISOString();
-  write(()=>usedCol.doc(id).update(upd),()=>{state.labDraft=""});
+  if(stage==="shot"){upd.labAt="";upd.scanAt=""}
+  if(stage==="lab")upd.scanAt="";
+  write(()=>api({action:"update",id,fields:upd}),()=>{state.labDraft=""});
 }
-function setLoc(key,loc){
-  if(!locCol)return;const ref=locCol.doc(hashKey(key));
-  write(()=>state.locs[key]===loc?ref.delete():ref.set({key,loc}));
-}
+function setLoc(key,loc){write(()=>api({action:"loc",rowKey:key,loc:state.locs[key]===loc?"":loc}))}
 
 document.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b||b.disabled)return;const ds=b.dataset;
@@ -597,27 +583,31 @@ $("src").textContent=CACHE?`저장된 사본 · ${fmtTime(Date.parse(CACHE.at))}
 state.view=viewFromHash();
 render();
 
-/* ---------- 이 폰에 저장하는 기록 ---------- */
-const Store={
-  subs:{},
-  read(n){return LS.get("db-"+n,{})},
-  write(n,o){LS.set("db-"+n,o);this.emit(n)},
-  emit(n){const o=this.read(n);const snap={docs:Object.keys(o).map(id=>({id,data:()=>o[id]})),metadata:{fromCache:false}};(this.subs[n]||[]).forEach(f=>f(snap))},
-  collection(n){const S=this;return{
-    async add(d){const o=S.read(n),id=Date.now().toString(36)+Math.random().toString(36).slice(2,8);o[id]=d;S.write(n,o);return{id}},
-    doc(id){return{
-      async set(d){const o=S.read(n);o[id]=d;S.write(n,o)},
-      async update(d){const o=S.read(n);if(!o[id])throw{code:"invalid_argument"};o[id]={...o[id],...d};S.write(n,o)},
-      async delete(){const o=S.read(n);delete o[id];S.write(n,o)}}},
-    onSnapshot(f){(S.subs[n]=S.subs[n]||[]).push(f);setTimeout(()=>S.emit(n),0);return()=>{}}
-  }}
-};
-state.canUse=true;
-usedCol=Store.collection("used");locCol=Store.collection("loc");
-usedCol.onSnapshot(snap=>{state.logs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(l=>typeof l.key==="string"&&typeof l.base==="number"&&typeof l.at==="string");render()});
-locCol.onSnapshot(snap=>{const m={};snap.docs.forEach(d=>{const v=d.data();if(v&&typeof v.key==="string"&&LOCS.includes(v.loc))m[v.key]=v.loc});state.locs=m;render()});
-window.addEventListener("storage",e=>{if(e.key==="film-db-used")Store.emit("used");if(e.key==="film-db-loc")Store.emit("loc")});
-try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+/* ---------- 기록은 구글 시트 '사용기록' 탭에 저장 ---------- */
+const parseLocal=v=>{if(!v)return"";const m=/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(v);if(!m)return"";return new Date(+m[1],+m[2]-1,+m[3],m[4]?+m[4]:12,m[5]?+m[5]:0).toISOString()};
+function applySnap(j){
+  const rows=rowsFrom(j.sheets);
+  if(!rows.length)throw{code:"empty"};
+  const logs=Array.isArray(j.logs)?j.logs.map(x=>({...x,at:parseLocal(x.at)||new Date().toISOString(),labAt:parseLocal(x.labAt),scanAt:parseLocal(x.scanAt),ei:x.ei?+x.ei||x.ei:""})):null;
+  state.canUse=!!logs;
+  state.rows=withKeys(rows.map(toRow));state.logs=logs||[];state.locs=j.locs||{};
+  const snap={rows,at:j.at||new Date().toISOString(),sheetUrl:j.sheetUrl||"",logs:state.logs,locs:state.locs,canUse:state.canUse};
+  LS.set("sheet",snap);
+  if(snap.sheetUrl){$("sheetlink").href=snap.sheetUrl;$("sheetlink").hidden=false}
+  setSource(true,`구글 시트 · ${fmtTime(Date.parse(snap.at))} 기준`);
+  if(!state.canUse)setAction(`<span class="msg">Apps Script가 예전 버전이라 읽기만 돼요. 새 버전으로 업데이트하면 기록이 시트에 저장돼요.</span>`);
+  render();
+}
+async function post(body){
+  const cfg=LS.get("cfg",null);if(!cfg||!cfg.url||!cfg.key)throw{code:"setup"};
+  const res=await fetch(cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({key:cfg.key,...body}),redirect:"follow",cache:"no-store"});
+  if(!res.ok)throw{code:"http",status:res.status};
+  let j;try{j=await res.json()}catch(e){throw{code:"format"}}
+  if(!j.ok)throw{code:j.error||"server"};
+  return j;
+}
+async function api(body){applySnap(await post(body))}
+if(CACHE){state.logs=Array.isArray(CACHE.logs)?CACHE.logs:[];state.locs=CACHE.locs||{};state.canUse=!!CACHE.canUse}
 
 /* ---------- 구글 시트 (Apps Script) ---------- */
 function setSource(live,text){$("dot").className="dot"+(live?" live":"");$("src").textContent=text}
@@ -634,15 +624,6 @@ function rowsFrom(sheets){
   }
   return out;
 }
-async function fetchSheet(cfg){
-  const res=await fetch(cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({key:cfg.key}),redirect:"follow",cache:"no-store"});
-  if(!res.ok)throw{code:"http",status:res.status};
-  let j;try{j=await res.json()}catch(e){throw{code:"format"}}
-  if(!j.ok)throw{code:j.error||"server"};
-  const rows=rowsFrom(j.sheets);
-  if(!rows.length)throw{code:"empty"};
-  return{rows,at:j.at||new Date().toISOString(),sheetUrl:j.sheetUrl||""};
-}
 const errText=e=>({bad_key:"키가 맞지 않아요. 스크립트 속성의 KEY와 똑같이 넣어 주세요.",http:"주소에 연결하지 못했어요. 웹 앱 URL이 맞는지, 배포에서 액세스를 '모든 사용자'로 했는지 확인해 주세요.",format:"응답을 읽지 못했어요. 웹 앱 URL(…/exec)을 넣었는지 확인해 주세요.",empty:"시트에서 필름 행을 찾지 못했어요. 135, 120 시트 이름과 '판형' 머리글을 확인해 주세요."})[e&&e.code]||"인터넷 연결을 확인하고 다시 불러와 주세요.";
 let loading=false;
 async function loadSheet(manual){
@@ -651,11 +632,10 @@ async function loadSheet(manual){
   if(loading)return false;loading=true;
   if(manual)setAction(`<span class="msg">불러오는 중…</span>`);
   try{
-    const r=await fetchSheet(cfg);
-    LS.set("sheet",r);state.rows=withKeys(r.rows.map(toRow));
-    if(r.sheetUrl){$("sheetlink").href=r.sheetUrl;$("sheetlink").hidden=false}
-    setSource(true,`구글 시트 · ${fmtTime(Date.parse(r.at))} 기준`);setAction(`<button class="act quiet" id="reload">다시 불러오기</button>`);
-    render();return true;
+    setAction("");
+    applySnap(await post({action:"read"}));
+    if(state.canUse)setAction(`<button class="act quiet" id="reload">다시 불러오기</button>`);
+    return true;
   }catch(e){
     const c=LS.get("sheet",null);
     setSource(false,c?`저장된 사본 · ${fmtTime(Date.parse(c.at))} 기준`:"시트를 불러오지 못했어요");
@@ -681,9 +661,8 @@ function renderSet(){
       <div class="btns"><button class="rowbtn" id="s-save">저장하고 불러오기</button></div>
       ${setMsg?`<p>${setMsg}</p>`:""}
     </div>
-    <h2>기록 백업</h2>
-    <p>사용 기록 ${nUsed}개와 보관 위치는 이 폰에만 저장돼요. 폰을 바꾸기 전에 백업해 두세요.</p>
-    <div class="btns"><button class="rowbtn soft" id="s-export">백업 파일 저장</button><label class="rowbtn soft">백업 불러오기<input id="s-import" type="file" accept="application/json,.json" hidden></label></div>
+    <h2>기록</h2>
+    <p>${state.canUse?`사용 기록 ${nUsed}개는 구글 시트의 '사용기록' 탭에, 보관 위치는 '보관위치' 탭에 저장돼요. 폰을 바꿔도 그대로 남아요.`:"Apps Script를 새 버전으로 업데이트하면 기록이 시트에 저장돼요."}</p>
   </div>`;
 }
 document.addEventListener("click",async e=>{
@@ -696,25 +675,9 @@ document.addEventListener("click",async e=>{
     setMsg=ok?`<span class="hint ok">연결됐어요. 필름 ${state.rows.length}종을 불러왔어요.</span>`:`<span class="hint bad">${esc($("action").textContent.replace("다시 불러오기","").trim())}</span>`;
     renderSet();
   }
-  if(e.target.id==="s-export"){
-    const data={app:"film-app",v:1,at:new Date().toISOString(),used:Store.read("used"),loc:Store.read("loc")};
-    const blob=new Blob([JSON.stringify(data,null,1)],{type:"application/json"});
-    const name=`film-backup-${ymd(new Date())}.json`;
-    try{if(navigator.canShare&&navigator.canShare({files:[new File([blob],name,{type:"application/json"})]})){await navigator.share({files:[new File([blob],name,{type:"application/json"})],title:name});return}}catch(err){if(err&&err.name==="AbortError")return}
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
-  }
+
 });
-document.addEventListener("change",async e=>{
-  if(e.target.id!=="s-import"||!e.target.files[0])return;
-  try{
-    const j=JSON.parse(await e.target.files[0].text());
-    if(j.app!=="film-app"||typeof j.used!=="object")throw 0;
-    const cur=Store.read("used");Object.assign(cur,j.used);Store.write("used",cur);
-    const loc=Store.read("loc");Object.assign(loc,j.loc||{});Store.write("loc",loc);
-    setMsg="";alert(`기록 ${Object.keys(j.used).length}개를 불러왔어요.`);
-  }catch(err){alert("필름정리 백업 파일이 아니에요.")}
-  renderSet();
-});
+
 
 render();
 loadSheet(false);
