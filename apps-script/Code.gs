@@ -183,44 +183,126 @@ function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
-/* ---------- 시트 안에서 필름 등록 ('요약' 시트 K7 체크박스) ---------- */
-// 원래 쓰던 기능 그대로. 요약 시트 7행에 입력하고 K7을 체크하면 135/120 탭에 한 줄 추가.
+/* ---------- 원래 쓰던 시트 자동화 (그대로 유지) ----------
+ * 1) 요약 K7 체크 → 135/120 탭에 등록
+ * 2) 판형 칸을 바꾸면 135↔120 탭 사이로 행 이동
+ * 3) 유형 칸을 바꾸면 유형별 정렬
+ * 앱이 수량을 바꿀 때는 onEdit이 실행되지 않아요 (스크립트가 바꾼 값은 onEdit 대상이 아님).
+ */
 function onEdit(e) {
+  if (!e || !e.range) return;
+
   const range = e.range;
   const sheet = range.getSheet();
+  const sheetName = sheet.getName();
+  const row = range.getRow();
+  const col = range.getColumn();
+  const val = e.value !== undefined ? String(e.value).trim() : "";
+  const ss = e.source;
 
-  // '요약' 시트의 K7(등록 체크박스) 셀이 TRUE로 바뀌었을 때만 실행
-  if (sheet.getName() !== '요약' || range.getA1Notation() !== 'K7' || range.getValue() !== true) {
-    return;
-  }
+  // =========================================================================
+  // [기능 1] 요약 시트에서 K7 등록 체크박스 클릭 시 자동 전송 및 초기화
+  // =========================================================================
+  if (sheetName === "요약" && range.getA1Notation() === "K7" && range.getValue() === true) {
+    const inputVals = sheet.getRange("B7:J7").getValues()[0];
+    const format = String(inputVals[0]).trim(); // B7: 판형 ("135" 또는 "120")
 
-  // B7:J7 입력 데이터: [판형, 매수, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고]
-  const inputRow = sheet.getRange('B7:J7').getValues()[0];
-  const formatType = String(inputRow[0]).trim();
+    if (format === "135") {
+      const targetSheet = ss.getSheetByName("135");
+      if (targetSheet) {
+        // 135 시트 컬럼 순서 (9개): 판형, 매수, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고
+        targetSheet.appendRow(inputVals);
 
-  if (!formatType) {
-    SpreadsheetApp.getUi().alert('판형을 선택해주세요.');
+        // 추가 후 유형(H열 = 8번째 열) 기준 자동 정렬
+        const tLastRow = targetSheet.getLastRow();
+        if (tLastRow > 1) {
+          targetSheet.getRange(2, 1, tLastRow - 1, 9).sort({ column: 8, ascending: true });
+        }
+      }
+    } else if (format === "120") {
+      const targetSheet = ss.getSheetByName("120");
+      if (targetSheet) {
+        // 120 시트 컬럼 순서 (8개, 매수 제외): 판형, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고
+        const row120 = [
+          inputVals[0], // 판형
+          inputVals[2], // 브랜드
+          inputVals[3], // 필름명
+          inputVals[4], // 감도
+          inputVals[5], // 수량
+          inputVals[6], // 유통기한
+          inputVals[7], // 유형
+          inputVals[8]  // 비고
+        ];
+        targetSheet.appendRow(row120);
+
+        // 추가 후 유형(G열 = 7번째 열) 기준 자동 정렬
+        const tLastRow = targetSheet.getLastRow();
+        if (tLastRow > 1) {
+          targetSheet.getRange(2, 1, tLastRow - 1, 8).sort({ column: 7, ascending: true });
+        }
+      }
+    }
+
+    // 입력 행 초기화 및 체크박스 해제 (수식/드롭다운 유지)
+    sheet.getRange("B7:J7").clearContent();
     range.setValue(false);
     return;
   }
 
-  const ss = e.source;
+  // 1행(헤더) 수정 시에는 아래 자동 정렬/이동 로직 무시
+  if (row <= 1) return;
 
-  if (formatType === '135') {
-    // 135 탭: 판형, 매수, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고
-    const targetSheet = ss.getSheetByName('135');
-    if (targetSheet) {
-      targetSheet.appendRow([inputRow[0], inputRow[1], inputRow[2], inputRow[3], inputRow[4], inputRow[5], inputRow[6], inputRow[7], inputRow[8]]);
-    }
-  } else if (formatType === '120') {
-    // 120 탭: 판형, 브랜드, 필름명, 감도, 수량, 유통기한, 유형, 비고 (매수 없음)
-    const targetSheet = ss.getSheetByName('120');
-    if (targetSheet) {
-      targetSheet.appendRow([inputRow[0], inputRow[2], inputRow[3], inputRow[4], inputRow[5], inputRow[6], inputRow[7], inputRow[8]]);
+  // =========================================================================
+  // [기능 2] 135 또는 120 시트의 A열(판형) 변경 시 해당 시트로 행 이동
+  // =========================================================================
+  if (col === 1 && (val === "135" || val === "120")) {
+    const targetSheetName = val;
+
+    // 현재 시트와 대상 시트가 다를 때만 이동 실행
+    if (sheetName !== targetSheetName && (sheetName === "135" || sheetName === "120")) {
+      const targetSheet = ss.getSheetByName(targetSheetName);
+
+      if (targetSheet) {
+        const numCols = sheet.getLastColumn();
+        const rowData = sheet.getRange(row, 1, 1, numCols).getValues()[0];
+
+        if (targetSheetName === "135" && sheetName === "120") {
+          // 120 -> 135 이동 시: 매수(빈값)를 2번째에 삽입
+          const newRow = [rowData[0], "", ...rowData.slice(1)];
+          targetSheet.appendRow(newRow);
+        } else if (targetSheetName === "120" && sheetName === "135") {
+          // 135 -> 120 이동 시: 매수(2번째 열) 제외
+          const newRow = [rowData[0], ...rowData.slice(2)];
+          targetSheet.appendRow(newRow);
+        }
+
+        // 기존 시트에서 행 삭제
+        sheet.deleteRow(row);
+
+        // 대상 시트의 유형 열 기준으로 자동 정렬 (135는 H열/8, 120은 G열/7)
+        const tLastRow = targetSheet.getLastRow();
+        const tTypeCol = targetSheetName === "135" ? 8 : 7;
+        const tNumCols = targetSheet.getLastColumn();
+        if (tLastRow > 1) {
+          targetSheet.getRange(2, 1, tLastRow - 1, tNumCols).sort({ column: tTypeCol, ascending: true });
+        }
+        return;
+      }
     }
   }
 
-  // 등록 완료 후 입력란 초기화 및 체크박스 해제
-  sheet.getRange('C7:J7').clearContent();
-  range.setValue(false);
+  // =========================================================================
+  // [기능 3] 유형 열 수정 시 현재 시트 내에서 유형별 자동 정렬
+  //          - 135 시트: H열 (8번째 열)
+  //          - 120 시트: G열 (7번째 열)
+  // =========================================================================
+  if ((sheetName === "135" && col === 8) || (sheetName === "120" && col === 7)) {
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    const sortCol = sheetName === "135" ? 8 : 7;
+
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, lastCol).sort({ column: sortCol, ascending: true });
+    }
+  }
 }
