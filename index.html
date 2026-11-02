@@ -252,7 +252,6 @@ body.lock{overflow:hidden}
   padding:env(safe-area-inset-top,0px) max(20px,env(safe-area-inset-right,0px)) calc(30px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
   display:flex;flex-direction:column;align-items:center;gap:12px}
 .sheet-full>*{width:100%;max-width:520px;flex:none}
-.sh-count.over b,.sh-count.over span{color:var(--late)}
 .sh-top{display:flex;justify-content:space-between;padding:8px 0}
 .sh-head{font-size:17px;font-weight:600;text-align:center}
 .sh-issued{display:grid;justify-items:center;gap:2px;padding:12px;border-radius:22px;background:var(--tint-soft)}
@@ -766,6 +765,6 @@ render();
 loadSheet(false);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
-<script src="geo.js?v=13"></script>
+<script src="geo.js?v=14"></script>
 </body>
 </html>

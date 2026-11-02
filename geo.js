@@ -120,20 +120,19 @@ const Shoot = {
     const box = $("shoot"); if (!box || box.hidden) { paintPill(); return; }
     const l = this.log();
     if (!l) { box.innerHTML = `<div class="sh-top"><button class="navbtn" data-x>닫기</button></div><p class="empty">이 롤 기록을 찾지 못했어요.</p>`; return; }
-    const r = state.rows.find(x => x.key === l.key), exp = r && /^\d+$/.test(r.exp) ? +r.exp : (l.fmt === "120" ? 12 : 0);
     const fr = Frames.all(l.id), n = fr.length ? Math.max(...fr.map(f => f.n)) : 0;
     const fix = Geo.fresh(), wait = Frames.queue.filter(f => f.logId === l.id).length;
     const loc = Geo.err ? `<span class="bad">${esc(Geo.err)}</span>` : fix ? `${esc(Place.near(fix) || "위치 잡음")} <em>±${Math.round(fix.acc)}m</em>` : "위치 찾는 중…";
     const chips = (k, list) => `<div class="sh-chips">${list.map(v => `<button data-sel="${k}" data-v2="${v}" aria-pressed="${this.sel[k] === v}">${k === "ap" ? "f/" + v : v}</button>`).join("")}</div>`;
     const old = $("sh-note"), keep = old ? old.value : "", focused = old && document.activeElement === old;
     box.innerHTML = `
-      <div class="sh-top"><button class="navbtn" data-x>닫기</button><button class="navbtn" data-endroll>촬영 끝</button></div>
+      <div class="sh-top"><button class="navbtn" data-x>닫기</button><button class="navbtn" data-endroll>촬영 종료</button></div>
       ${this.issued === l.no ? `<div class="sh-issued">새 롤 번호 <b>${esc(l.no)}</b><span>필름 통에 적어 두세요</span></div>` : ""}
       <div class="sh-head"><span class="no">${esc(l.no)}</span> ${esc(l.brand)} ${esc(l.name || l.iso)}</div>
-      <div class="sh-count${exp && n > exp ? " over" : ""}"><b>${n}</b><span>${exp ? `/ ${exp}` : "컷"}</span></div>
+      <div class="sh-count"><b>${n}</b><span>컷</span></div>
       <div class="sh-loc">${loc}</div>
       <button class="sh-btn${Date.now() - this.flash < 400 ? " hit" : ""}" data-snap aria-label="${n + 1}번 컷 기록">찰칵</button>
-      <div class="sh-sub">${exp && n >= exp ? `${exp}컷을 다 찍었어요. 더 찍히면 계속 누르세요` : `${n + 1}번 컷을 찍을 때 누르세요`}</div>
+      <div class="sh-sub">${n + 1}번 컷을 찍을 때 누르세요 · 다 찍으면 촬영 종료</div>
       ${chips("ap", APS)}${chips("ss", SSS)}
       <input id="sh-note" class="sh-note" placeholder="이 컷 메모 (선택)" autocomplete="off">
       <div class="sh-sync">${wait ? (Frames.sending ? `${wait}컷 시트로 보내는 중…` : `${wait}컷 폰에 저장됨 · 연결되면 시트로 보내요`) : fr.length ? "모든 컷이 시트에 저장됐어요" : ""}</div>
