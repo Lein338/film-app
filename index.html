@@ -265,9 +265,9 @@ body.lock{overflow:hidden}
   box-shadow:0 12px 36px color-mix(in srgb,var(--tint) 45%,transparent),inset 0 0 0 6px rgba(255,255,255,.25);transition:transform .08s}
 .sh-btn:active,.sh-btn.hit{transform:scale(.94)}
 .sh-sub{text-align:center;font-size:13px;color:var(--muted)}
-.sh-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.sh-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:2px 0}
 .sh-chips::-webkit-scrollbar{display:none}
-.sh-chips button{appearance:none;border:0;flex:none;height:34px;padding:0 13px;border-radius:999px;background:var(--fill);font-size:14px;font-weight:600;cursor:pointer}
+.sh-chips button{appearance:none;border:0;flex:none;height:32px;padding:0 11px;border-radius:999px;background:var(--fill);font-size:13px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums}
 .sh-chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .sh-note{border-radius:999px}
 .sh-sync{text-align:center;font-size:13px;color:var(--muted);min-height:16px}
@@ -765,6 +765,6 @@ render();
 loadSheet(false);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
-<script src="geo.js?v=14"></script>
+<script src="geo.js?v=15"></script>
 </body>
 </html>
