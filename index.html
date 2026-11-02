@@ -276,7 +276,8 @@ const TYPES=[
   {k:"C41",label:"C-41",c:"var(--c41)"},
   {k:"E6",label:"E-6",c:"var(--e6)"},
   {k:"ECN-2",label:"ECN-2",c:"var(--ecn)"}];
-const typeOf=t=>TYPES.find(x=>x.k===t)||{k:t,label:t||"—",c:"var(--faint)"};
+const typeOf=t=>TYPES.find(x=>x.k===t)||{k:t,label:t||"유형 없음",c:"var(--faint)"};
+const knownType=t=>TYPES.some(x=>x.k===t);
 const LOCS=["냉장","냉동","실온"];
 const STAGES={shot:"현상 전",lab:"현상 맡김",scan:"스캔 완료"};
 const ISOS=[6,8,10,12,16,20,25,32,40,50,64,80,100,125,160,200,250,320,400,500,640,800,1000,1250,1600,2000,2500,3200,6400];
@@ -397,7 +398,7 @@ function renderInv(){
 
   const locOk=r=>state.loc==="all"||(state.loc==="none"?!r.loc:r.loc===state.loc);
   const isBulk=r=>r.exp==="벌크"||r.note==="벌크";
-  const shown=byFmt.filter(r=>state.types.has(r.type)&&locOk(r)).map(r=>({r,s:!isBulk(r)&&!(r.left>0)?{g:"done",sort:0,text:"다 씀 · 시트 수량 0"}:status(r)}));
+  const shown=byFmt.filter(r=>(state.types.has(r.type)||!knownType(r.type))&&locOk(r)).map(r=>({r,s:!isBulk(r)&&!(r.left>0)?{g:"done",sort:0,text:"다 씀 · 시트 수량 0"}:status(r)}));
   if(!state.rows.length)$("list").innerHTML=`<p class="empty">아직 시트를 불러오지 않았어요. 설정에서 시트 연결 주소와 키를 넣어 주세요.</p>`;
   else if(!shown.length)$("list").innerHTML=`<p class="empty">선택한 조건에 맞는 필름이 없어요.</p>`;
   else $("list").innerHTML=GROUPS.map(([g,glabel])=>{
