@@ -230,6 +230,59 @@ footer .src{display:flex;gap:6px;align-items:center}
 .setup p{margin:0;font-size:13px;color:var(--muted)}
 .setup .ok{color:var(--ok)} .setup .bad{color:var(--late)}
 button:focus-visible,a:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
+
+/* 위치 · 촬영 · 지도 · EXIF */
+body.lock{overflow:hidden}
+.act.sm{height:28px;padding:0 11px;font-size:13px}
+.geo{font-size:14px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.geo b{color:var(--ink);font-weight:600}.geo em,.sh-loc em{font-style:normal;color:var(--faint)}
+.bad{color:var(--late)}
+.fr{display:grid;gap:10px}
+.frl{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px;max-height:240px;overflow:auto}
+.frl li,.sh-list li{display:flex;gap:10px;align-items:baseline}
+.frl b,.sh-list b{font-family:var(--round);font-weight:700;min-width:22px;text-align:right;color:var(--tint)}
+.frl span,.sh-list span{color:var(--muted);min-width:0;flex:1}
+#rollpill{position:fixed;z-index:31;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom,0px));width:max-content}
+#rollpill button{appearance:none;border:0;height:40px;padding:0 18px;border-radius:999px;font-size:14px;font-weight:600;color:#fff;background:var(--tint);box-shadow:0 6px 20px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap}
+.sheet-full{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:env(safe-area-inset-top,0px) max(20px,env(safe-area-inset-right,0px)) calc(30px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;align-items:center;gap:12px}
+.sheet-full>*{width:100%;max-width:520px}
+.sh-top{display:flex;justify-content:space-between;padding:8px 0}
+.sh-head{font-size:17px;font-weight:600;text-align:center}
+.sh-count{display:flex;justify-content:center;align-items:baseline;gap:6px}
+.sh-count b{font-family:var(--round);font-size:96px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.sh-count span{font-size:22px;color:var(--muted);font-weight:600}
+.sh-loc{text-align:center;font-size:15px;color:var(--muted)}
+.sh-btn{appearance:none;border:0;width:168px!important;height:168px;border-radius:50%;margin:8px auto 0;background:var(--tint);color:#fff;font-size:24px;font-weight:700;cursor:pointer;
+  box-shadow:0 12px 36px color-mix(in srgb,var(--tint) 45%,transparent),inset 0 0 0 6px rgba(255,255,255,.25);transition:transform .08s}
+.sh-btn:active,.sh-btn.hit{transform:scale(.94)}
+.sh-sub{text-align:center;font-size:13px;color:var(--muted)}
+.sh-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.sh-chips::-webkit-scrollbar{display:none}
+.sh-chips button{appearance:none;border:0;flex:none;height:34px;padding:0 13px;border-radius:999px;background:var(--fill);font-size:14px;font-weight:600;cursor:pointer}
+.sh-chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.sh-note{border-radius:999px}
+.sh-sync{text-align:center;font-size:13px;color:var(--muted);min-height:16px}
+.sh-list{list-style:none;margin:0;padding:0;display:grid;gap:0;font-size:14px}
+.sh-list li{padding:10px 0;border-bottom:.5px solid var(--line);align-items:center}
+.sh-list .act{height:30px;font-size:13px;padding:0 12px}
+.maphead{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;min-height:36px}
+#map{height:62vh;min-height:320px;border-radius:22px;overflow:hidden;background:var(--fill);z-index:0}
+.fnum{display:grid!important;place-items:center;font:700 10px/1 var(--round);color:#fff;pointer-events:none}
+.leaflet-popup-content{font:14px/1.4 var(--sans)}
+.ex-title{font-size:28px;font-weight:700;margin:4px 0 0}
+.ex-sub{margin:0;color:var(--muted);font-size:15px}
+.ex-pick{justify-self:start;height:44px;padding:0 20px;border-radius:999px;background:var(--tint);color:#fff;font-size:16px;font-weight:600;display:inline-flex;align-items:center;cursor:pointer;width:max-content!important}
+.ex-off{display:flex;align-items:center;gap:10px;font-size:15px}
+.ex-off b{font-family:var(--round);font-size:20px}
+.ex-hint{margin:0;font-size:13px;color:var(--muted)}
+.ex-list{list-style:none;margin:0;padding:0;font-size:14px}
+.ex-list li{display:grid;gap:2px;padding:9px 0;border-bottom:.5px solid var(--line)}
+.ex-list .fn{font-weight:600;overflow-wrap:anywhere}
+.ex-list .miss{color:var(--faint)}
+.sheet-full .rowbtn{appearance:none;border:0;cursor:pointer;height:48px;padding:0 22px;border-radius:999px;background:var(--tint);color:#fff;font-size:16px;font-weight:600}
+.sheet-full .btns{display:flex;justify-content:center}
 </style>
 </head>
 <body>
@@ -269,6 +322,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--tint);outline-offse
     <div id="action" hidden></div>
   </footer>
 </div>
+
+<div id="rollpill" hidden></div>
+<div id="shoot" class="sheet-full" hidden></div>
+<div id="exif" class="sheet-full" hidden></div>
 
 <script>
 const TYPES=[
@@ -353,12 +410,14 @@ function render(){
   $("ttl").textContent=state.view==="set"?"설정":state.view==="log"?"사용 기록":"필름정리";
   if(state.view==="inv")renderInv();else if(state.view==="log")renderLog();else renderSet();
   if(id){const n=$(id);if(n&&n!==a){n.focus({preventScroll:true});if(sel)try{n.setSelectionRange(sel[0],sel[1])}catch(e){}}}
+  if(typeof paintPill==="function")paintPill();
+  if(typeof Shoot!=="undefined"&&Shoot.logId)Shoot.paint();
 }
 
 function formHtml(f){
   const d=state.draft,ad=f.advice;
   const chips=f.iso?[...new Set([+f.iso,nearestIso(f.iso/2),nearestIso(f.iso/4),nearestIso(f.iso*2)])].map(v=>`<button type="button" data-ei="${v}" aria-pressed="${String(+d.ei===v)}">${v===+f.iso?`박스 ${v}`:v<f.iso?`EI ${v}`:`푸시 ${v}`}</button>`).join(""):"";
-  return`<div class="form">${ad?`<div class="advice">${esc(ad.text)}</div>`:""}
+  return`<div class="form">${ad?`<div class="advice">${esc(ad.text)}</div>`:""}${f.mode==="new"?`<div class="geo" id="geo-line">${typeof geoLineHtml==="function"?geoLineHtml():""}</div>`:""}
   <div class="fgrid">
     <label>날짜<input id="f-date" data-field="date" type="date" value="${esc(d.date)}" max="${ymd(new Date())}"></label>
     <label>EI<input id="f-ei" data-field="ei" inputmode="numeric" placeholder="${esc(f.iso||"")}" value="${esc(d.ei)}"></label>
@@ -415,7 +474,7 @@ function renderInv(){
       if(open&&state.form&&state.form.mode==="new"&&state.form.key===r.key){
         extra=formHtml({mode:"new",iso:+r.iso||0,advice:advice(r)});
       }else if(open){
-        if(state.issued&&state.issued.key===r.key)extra+=`<div class="issued"><b>${esc(state.issued.no)}</b><span>이 롤의 번호예요. 필름 통이나 네거 슬리브에 적어 두세요.</span></div>`;
+        if(state.issued&&state.issued.key===r.key)extra+=`<div class="issued"><b>${esc(state.issued.no)}</b><span>이 롤의 번호예요. 필름 통이나 네거 슬리브에 적어 두세요.</span>${state.issued.id?`<div class="fact" style="margin-top:8px"><button class="act" data-shoot="${esc(state.issued.id)}">촬영 시작 · 컷마다 위치 남기기</button></div>`:""}</div>`;
         if(state.canUse){
           const k=esc(r.key);
           extra+=`<div class="acts">${r.left>0?`<button class="act" data-use="${k}" ${state.busy?"disabled":""}>한 롤 썼어요</button>`:`<span class="hint">${r.exp==="벌크"||r.note==="벌크"?"벌크 필름은 시트에서 직접 관리해요.":"시트 수량이 0이라 기록할 수 없어요. 시트에 수량을 넣으면 생겨요."}</span>`}${(()=>{const L=lastLog(r.key);return L?`<button class="act quiet" data-undo="${k}" ${state.busy?"disabled":""}>되돌리기</button><span class="hint">${esc(L.no)} · ${dayLabel(L.at)}에 씀</span>`:""})()}<span class="locset">보관 ${LOCS.map(l=>`<button class="pick" data-setloc="${l}" data-key="${k}" aria-pressed="${r.loc===l}" ${state.busy?"disabled":""}>${l}</button>`).join("")}</span></div>`;
@@ -434,7 +493,7 @@ function entryHtml(l){
   const brand=l.brand||(l.label||"").split(" ")[0];
   const name=l.brand?(l.name||l.iso||""):(l.label||"").split(" ").slice(1).join(" ");
   const meta=[l.fmt,l.ei?`EI ${l.ei}`:l.iso&&`ISO ${l.iso}`,l.cam].filter(Boolean).join( " · ");
-  let html=`<div class="entry" style="--c:${ty.c}"><button class="erow" id="e-${esc(l.id)}" data-log="${esc(l.id)}" aria-expanded="${open}"><div class="dt">${d.getDate()}<small>${WD[d.getDay()]}요일</small></div><span class="bar"></span><div class="body"><div class="name">${l.no?`<span class="no">${esc(l.no)}</span>`:""}${esc(brand)}<small>${esc(name)}</small></div>${meta?`<div class="meta edge">${esc(meta)}</div>`:""}${l.place?`<div class="when">${esc(l.place)}</div>`:""}</div><div class="st"><span class="stg ${stage}">${STAGES[stage]}</span>${pend?`<span class="sheet">시트 반영 전</span>`:""}</div></button>`;
+  let html=`<div class="entry" style="--c:${ty.c}"><button class="erow" id="e-${esc(l.id)}" data-log="${esc(l.id)}" aria-expanded="${open}"><div class="dt">${d.getDate()}<small>${WD[d.getDay()]}요일</small></div><span class="bar"></span><div class="body"><div class="name">${l.no?`<span class="no">${esc(l.no)}</span>`:""}${esc(brand)}<small>${esc(name)}</small></div>${meta?`<div class="meta edge">${esc(meta)}</div>`:""}${(()=>{const p=typeof placesOf==="function"?placesOf(l):l.place;const n=typeof Frames!=="undefined"?Frames.all(l.id).length:0;return p||n?`<div class="when">${esc(p)}${n?`${p?" · ":""}${n}컷 기록`:""}</div>`:""})()}</div><div class="st"><span class="stg ${stage}">${STAGES[stage]}</span>${pend?`<span class="sheet">시트 반영 전</span>`:""}</div></button>`;
   if(open&&state.form&&state.form.mode==="edit"&&state.form.id===l.id){
     html+=formHtml({mode:"edit",iso:+l.iso||0,advice:null});
   }else if(open){
@@ -448,7 +507,9 @@ function entryHtml(l){
       acts+=`<div class="fact"><button class="act" data-edit="${id}" ${dis}>메모 고치기</button><button class="act quiet" data-del="${id}" ${dis}>기록 지우고 수량 되돌리기</button></div>`;
     }
     const tag=l.no?`<div class="tag"><b>${esc(l.no)}</b><span>${esc(brand)} ${esc(name)} · ${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}${l.place?` · ${esc(l.place)}`:""}</span></div>`:"";
-    html+=`<div class="detail">${tag}<div class="flow"><b class="${stage==="shot"?"on":""}">현상 전</b><i></i><b class="${stage==="lab"?"on":""}">현상 맡김</b><i></i><b class="${stage==="scan"?"on":""}">스캔 완료</b></div><dl>${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>${acts}</div>`;
+    const frs=typeof Frames!=="undefined"?Frames.all(l.id):[],hasGeo=frs.some(f=>f.lat)||l.lat;
+    const fblock=`<div class="fr">${frs.length?`<ol class="frl">${frs.map(f=>`<li><b>${f.n}</b><span>${new Date(f.at).toTimeString().slice(0,5)} · ${esc(f.place||(f.lat?"위치 있음":"위치 없음"))}${f.ap?` · f/${esc(f.ap)}`:""}${f.ss?` · ${esc(f.ss)}`:""}${f.note?` · ${esc(f.note)}`:""}</span></li>`).join("")}</ol>`:""}<div class="fact">${state.canUse&&stage==="shot"?`<button class="act" data-shoot="${esc(l.id)}">${frs.length?"촬영 이어서":"촬영 시작"}</button>`:""}${hasGeo?`<button class="act quiet" data-mapl="${esc(l.id)}">지도</button>`:""}${frs.length?`<button class="act quiet" data-exif="${esc(l.id)}">스캔에 위치 넣기</button>`:""}</div></div>`;
+    html+=`<div class="detail">${tag}${fblock}<div class="flow"><b class="${stage==="shot"?"on":""}">현상 전</b><i></i><b class="${stage==="lab"?"on":""}">현상 맡김</b><i></i><b class="${stage==="scan"?"on":""}">스캔 완료</b></div><dl>${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>${acts}</div>`;
   }
   return html+`</div>`;
 }
@@ -467,8 +528,11 @@ function renderLog(){
     html+=`<div class="dayhead"><span class="edge">찾은 기록</span><span class="edge n">${hits.length}롤</span></div>`+(hits.length?hits.map(entryHtml).join(""):`<p class="empty">맞는 기록이 없어요. 번호는 14나 26-014처럼 적어 보세요.</p>`);
     $("log").innerHTML=html;return;
   }
-  html+=`<div class="tabs lm" role="group" aria-label="보는 방식"><button id="m-list" data-mode="list" aria-pressed="${state.logMode==="list"}">목록</button><button id="m-cal" data-mode="cal" aria-pressed="${state.logMode==="cal"}">달력</button></div>`;
-  if(state.logMode==="cal"){
+  html+=`<div class="tabs lm" role="group" aria-label="보는 방식"><button id="m-list" data-mode="list" aria-pressed="${state.logMode==="list"}">목록</button><button id="m-cal" data-mode="cal" aria-pressed="${state.logMode==="cal"}">달력</button><button id="m-map" data-mode="map" aria-pressed="${state.logMode==="map"}">지도</button></div>`;
+  if(state.logMode==="map"){
+    html+=`<div class="maphead"><span class="edge" id="mapnote"></span>${state.mapFocus?`<button class="act quiet" data-mapall>모든 기록 보기</button>`:""}</div><div id="map"></div>`;
+    $("log").innerHTML=html;if(typeof drawMap==="function")drawMap();return;
+  }else if(state.logMode==="cal"){
     const {y,m}=state.cal,first=new Date(y,m,1),days=new Date(y,m+1,0).getDate();
     const byDay={};logs.forEach(l=>{const k=ymd(new Date(l.at));(byDay[k]=byDay[k]||[]).push(l)});
     const monthLogs=logs.filter(l=>{const d=new Date(l.at);return d.getFullYear()===y&&d.getMonth()===m});
@@ -517,6 +581,7 @@ function openUse(key){
   const ad=advice(r);
   state.form={mode:"new",key};state.draft={date:ymd(new Date()),ei:String(ad?ad.ei:(r.iso||"")),cam:cams()[0]||"",place:"",note:""};
   render();setTimeout(()=>{const n=$("f-cam");if(n&&!n.value)n.focus({preventScroll:true})},0);
+  if(typeof Geo!=="undefined"){Geo.stop(formGeo);Geo.start(formGeo);if(Geo.fresh())formGeo(Geo.fresh())}
 }
 function openEdit(id){
   const l=state.logs.find(x=>x.id===id);if(!l)return;
@@ -525,10 +590,11 @@ function openEdit(id){
 function saveForm(){
   const f=state.form,d=state.draft;if(!f)return;
   const fields={cam:(d.cam||"").trim(),place:(d.place||"").trim(),note:(d.note||"").trim(),ei:cleanEi(d.ei)||""};
+  if(f.mode==="new"&&d.lat!=null){fields.lat=d.lat;fields.lng=d.lng}
   if(f.mode==="new"){
     const r=state.rows.find(x=>x.key===f.key);if(!r)return;
     write(()=>api({action:"use",rowKey:r.key,at:atFromDate(d.date),fields}),
-      ()=>{state.form=null;const L=lastLog(r.key);state.issued={key:r.key,no:L?L.no:""}});
+      ()=>{state.form=null;if(typeof Geo!=="undefined")Geo.stop(formGeo);const L=lastLog(r.key);state.issued={key:r.key,no:L?L.no:"",id:L?L.id:""}});
   }else{
     const l=state.logs.find(x=>x.id===f.id);if(!l)return;
     const upd={...fields};if(d.date&&d.date!==ymd(new Date(l.at)))upd.at=atFromDate(d.date);
@@ -559,13 +625,13 @@ document.addEventListener("click",e=>{
   if(ds.setloc){setLoc(ds.key,ds.setloc);return}
   if(ds.ei){state.draft.ei=ds.ei;render();return}
   if(ds.save!==undefined){saveForm();return}
-  if(ds.cancel!==undefined){state.form=null;render();return}
+  if(ds.cancel!==undefined){state.form=null;if(typeof Geo!=="undefined")Geo.stop(formGeo);render();return}
   if(ds.log){state.openLog=state.openLog===ds.log?null:ds.log;if(state.form&&state.form.mode==="edit")state.form=null;state.labDraft="";render();return}
   if(ds.stage){setStage(ds.id,ds.stage);return}
   if(ds.edit){openEdit(ds.edit);return}
   if(ds.del){removeLog(ds.del);return}
   if(ds.qclear!==undefined){state.q="";render();const q=$("q");if(q)q.focus();return}
-  if(ds.mode){state.logMode=ds.mode;save();render();return}
+  if(ds.mode){state.logMode=ds.mode;state.mapFocus=null;save();render();return}
   if(ds.cal){let{y,m}=state.cal;m+=+ds.cal;if(m<0){m=11;y--}if(m>11){m=0;y++}state.cal={y,m};state.calDay=null;render();return}
   if(ds.day){state.calDay=state.calDay===ds.day?null:ds.day;render();return}
 });
@@ -586,14 +652,15 @@ state.view=viewFromHash();
 render();
 
 /* ---------- 기록은 구글 시트 '사용기록' 탭에 저장 ---------- */
-const parseLocal=v=>{if(!v)return"";const m=/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(v);if(!m)return"";return new Date(+m[1],+m[2]-1,+m[3],m[4]?+m[4]:12,m[5]?+m[5]:0).toISOString()};
+const parseLocal=v=>{if(!v)return"";const m=/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(v);if(!m)return"";return new Date(+m[1],+m[2]-1,+m[3],m[4]?+m[4]:12,m[5]?+m[5]:0,m[6]?+m[6]:0).toISOString()};
 function applySnap(j){
   const rows=rowsFrom(j.sheets);
   if(!rows.length)throw{code:"empty"};
   const logs=Array.isArray(j.logs)?j.logs.map(x=>({...x,at:parseLocal(x.at)||new Date().toISOString(),labAt:parseLocal(x.labAt),scanAt:parseLocal(x.scanAt),ei:x.ei?+x.ei||x.ei:""})):null;
   state.canUse=!!logs;
   state.rows=withKeys(rows.map(toRow));state.logs=logs||[];state.locs=j.locs||{};
-  const snap={rows,at:j.at||new Date().toISOString(),sheetUrl:j.sheetUrl||"",logs:state.logs,locs:state.locs,canUse:state.canUse};
+  state.frames=Array.isArray(j.frames)?j.frames.map(f=>({...f,at:parseLocal(f.at)||f.at})):[];
+  const snap={rows,at:j.at||new Date().toISOString(),sheetUrl:j.sheetUrl||"",logs:state.logs,locs:state.locs,frames:state.frames,canUse:state.canUse};
   LS.set("sheet",snap);
   if(snap.sheetUrl){$("sheetlink").href=snap.sheetUrl;$("sheetlink").hidden=false}
   setSource(true,`구글 시트 · ${fmtTime(Date.parse(snap.at))} 기준`);
@@ -609,7 +676,7 @@ async function post(body){
   return j;
 }
 async function api(body){applySnap(await post(body))}
-if(CACHE){state.logs=Array.isArray(CACHE.logs)?CACHE.logs:[];state.locs=CACHE.locs||{};state.canUse=!!CACHE.canUse}
+if(CACHE){state.logs=Array.isArray(CACHE.logs)?CACHE.logs:[];state.locs=CACHE.locs||{};state.frames=CACHE.frames||[];state.canUse=!!CACHE.canUse}
 
 /* ---------- 구글 시트 (Apps Script) ---------- */
 function setSource(live,text){$("dot").className="dot"+(live?" live":"");$("src").textContent=text}
@@ -685,5 +752,6 @@ render();
 loadSheet(false);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
+<script src="geo.js"></script>
 </body>
 </html>

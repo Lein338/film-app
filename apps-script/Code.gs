@@ -6,6 +6,7 @@
  * - "한 롤 썼어요": 해당 필름 수량 −1, '사용기록' 탭에 한 줄 추가
  * - 되돌리기: 수량 +1, 그 줄 삭제
  * - 메모·현상 단계 수정, 보관 위치 저장('보관위치' 탭)
+ * - 위치: 사용기록에 위도·경도, 컷마다 시간·위치를 '컷기록' 탭에 저장
  * 다른 칸(수식, 서식, 요약 시트)은 건드리지 않습니다.
  *
  * KEY: 아래 KEY_CONST에 넣거나, 프로젝트 설정 → 스크립트 속성에 KEY로 넣으세요.
@@ -14,8 +15,10 @@ const KEY_CONST = '';
 const SHEETS = ['135', '120'];
 const LOG = '사용기록';
 const LOC = '보관위치';
+const FR = '컷기록';
+const FR_HEAD = ['롤 번호', '컷', '시간', '위도', '경도', '정확도(m)', '장소', '조리개', '셔터', '메모', 'id', 'logId'];
 const TZ = 'Asia/Seoul';
-const LOG_HEAD = ['번호', '날짜', '판형', '브랜드', '필름명', '감도', '유형', '유통기한', 'EI', '카메라', '장소', '메모', '현상 단계', '현상소', '맡긴 날', '스캔 받은 날', 'id', 'key'];
+const LOG_HEAD = ['번호', '날짜', '판형', '브랜드', '필름명', '감도', '유형', '유통기한', 'EI', '카메라', '장소', '메모', '현상 단계', '현상소', '맡긴 날', '스캔 받은 날', 'id', 'key', '위도', '경도'];
 const STAGE = { shot: '현상 전', lab: '현상 맡김', scan: '스캔 완료' };
 
 function key_() { return KEY_CONST || PropertiesService.getScriptProperties().getProperty('KEY'); }
@@ -38,6 +41,8 @@ function handle_(b) {
     else if (b.action === 'undo') undo_(ss, b.id);
     else if (b.action === 'update') update_(ss, b.id, b.fields || {});
     else if (b.action === 'loc') loc_(ss, b.rowKey, b.loc);
+    else if (b.action === 'frames') (b.frames || []).forEach(function (f) { frame_(ss, f); });
+    else if (b.action === 'frameDelete') frameDelete_(ss, b.id);
     else return json_({ ok: false, error: 'bad_action' });
     SpreadsheetApp.flush();
   } catch (err) {
@@ -58,7 +63,7 @@ function snapshot_(ss) {
     sheets[name] = values.map(function (r) { return r.slice(0, end); })
       .filter(function (r, i) { return i === 0 || /^(135|120)$/.test(String(r[0]).trim()); });
   });
-  return { ok: true, at: new Date().toISOString(), sheetUrl: ss.getUrl(), sheets: sheets, logs: readLogs_(ss), locs: readLocs_(ss) };
+  return { ok: true, at: new Date().toISOString(), sheetUrl: ss.getUrl(), sheets: sheets, logs: readLogs_(ss), locs: readLocs_(ss), frames: readFrames_(ss) };
 }
 function readLogs_(ss) {
   const sh = ss.getSheetByName(LOG);
@@ -67,7 +72,7 @@ function readLogs_(ss) {
   const back = { '현상 전': 'shot', '현상 맡김': 'lab', '스캔 완료': 'scan' };
   return v.filter(function (r) { return r[16]; }).map(function (r) {
     return { no: r[0], at: r[1], fmt: r[2], brand: r[3], name: r[4], iso: r[5], type: r[6], expiry: r[7], ei: r[8],
-      cam: r[9], place: r[10], note: r[11], stage: back[r[12]] || 'shot', lab: r[13], labAt: r[14], scanAt: r[15], id: r[16], key: r[17] };
+      cam: r[9], place: r[10], note: r[11], stage: back[r[12]] || 'shot', lab: r[13], labAt: r[14], scanAt: r[15], id: r[16], key: r[17], lat: r[18], lng: r[19] };
   });
 }
 function readLocs_(ss) {
@@ -112,6 +117,10 @@ function logSheet_(ss) {
     sh.setFrozenRows(1);
     sh.hideColumns(17, 2); // id, key
   }
+  if (sh.getLastColumn() < LOG_HEAD.length) { // 예전 탭에 위도·경도 칸 추가
+    sh.getRange(1, 1, 1, LOG_HEAD.length).setValues([LOG_HEAD]).setFontWeight('bold');
+    sh.getRange('S:T').setNumberFormat('@');
+  }
   return sh;
 }
 function fmt_(iso, withTime) {
@@ -134,7 +143,7 @@ function use_(ss, b) {
   const sh = logSheet_(ss), x = b.fields || {}, at = b.at || new Date().toISOString();
   const no = nextNo_(sh, at), id = Utilities.getUuid();
   sh.appendRow([no, fmt_(at, true), f.info.fmt, f.info.brand, f.info.name, f.info.iso, f.info.type, f.info.expiry,
-    x.ei || '', x.cam || '', x.place || '', x.note || '', STAGE.shot, '', '', '', id, b.rowKey]);
+    x.ei || '', x.cam || '', x.place || '', x.note || '', STAGE.shot, '', '', '', id, b.rowKey, x.lat || '', x.lng || '']);
 }
 function logRow_(sh, id) {
   if (sh.getLastRow() < 2) return -1;
@@ -149,6 +158,12 @@ function undo_(ss, id) {
   const f = findRow_(ss, rowKey);
   if (f) f.sh.getRange(f.row, f.qtyCol).setValue(f.qty + 1);
   sh.deleteRow(r);
+  // 그 롤의 컷 기록도 같이 지움
+  const fs = ss.getSheetByName(FR);
+  if (fs && fs.getLastRow() > 1) {
+    const ids = fs.getRange(2, 12, fs.getLastRow() - 1, 1).getDisplayValues();
+    for (let i = ids.length - 1; i >= 0; i--) if (ids[i][0] === id) fs.deleteRow(i + 2);
+  }
 }
 function update_(ss, id, x) {
   const sh = logSheet_(ss), r = logRow_(sh, id);
@@ -160,7 +175,50 @@ function update_(ss, id, x) {
   set(14, x.lab);
   if (x.labAt !== undefined) set(15, x.labAt ? fmt_(x.labAt) : '');
   if (x.scanAt !== undefined) set(16, x.scanAt ? fmt_(x.scanAt) : '');
+  set(19, x.lat); set(20, x.lng);
 }
+/* ---------- 컷 기록 ---------- */
+function frameSheet_(ss) {
+  let sh = ss.getSheetByName(FR);
+  if (!sh) {
+    sh = ss.insertSheet(FR);
+    sh.getRange(1, 1, 1, FR_HEAD.length).setValues([FR_HEAD]).setFontWeight('bold');
+    sh.getRange('A:L').setNumberFormat('@');
+    sh.setFrozenRows(1);
+    sh.hideColumns(11, 2); // id, logId
+  }
+  return sh;
+}
+function readFrames_(ss) {
+  const sh = ss.getSheetByName(FR);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, FR_HEAD.length).getDisplayValues().filter(function (r) { return r[10]; }).map(function (r) {
+    return { no: r[0], n: +r[1] || 0, at: r[2], lat: r[3], lng: r[4], acc: r[5], place: r[6], ap: r[7], ss: r[8], note: r[9], id: r[10], logId: r[11] };
+  });
+}
+function frameRow_(sh, id) {
+  if (sh.getLastRow() < 2) return -1;
+  const ids = sh.getRange(2, 11, sh.getLastRow() - 1, 1).getDisplayValues();
+  for (let i = 0; i < ids.length; i++) if (ids[i][0] === id) return i + 2;
+  return -1;
+}
+function frame_(ss, f) {
+  if (!f || !f.id || !f.logId) return;
+  const sh = frameSheet_(ss), ls = logSheet_(ss), lr = logRow_(ls, f.logId);
+  if (lr < 0) return; // 롤 기록이 지워졌으면 무시
+  const no = ls.getRange(lr, 1).getDisplayValue();
+  const row = [no, String(f.n || ''), fmt_(f.at, true) + (f.at ? ':' + Utilities.formatDate(new Date(f.at), TZ, 'ss') : ''),
+    f.lat == null ? '' : String(f.lat), f.lng == null ? '' : String(f.lng), f.acc == null ? '' : String(Math.round(f.acc)),
+    f.place || '', f.ap || '', f.ss || '', f.note || '', f.id, f.logId];
+  const r = frameRow_(sh, f.id);
+  if (r > 0) sh.getRange(r, 1, 1, row.length).setValues([row]);
+  else sh.appendRow(row);
+}
+function frameDelete_(ss, id) {
+  const sh = ss.getSheetByName(FR); if (!sh) return;
+  const r = frameRow_(sh, id); if (r > 0) sh.deleteRow(r);
+}
+
 function loc_(ss, rowKey, loc) {
   let sh = ss.getSheetByName(LOC);
   if (!sh) {
