@@ -175,10 +175,8 @@ async function drawMap() {
   const focus = state.mapFocus, logs = state.logs.filter(l => !focus || l.id === focus);
   const pts = [];
   mapObj = L.map(el, { zoomControl: false, attributionControl: true });
-  // 라이트/다크 모드에 맞춘 지도 바탕 (CARTO)
-  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
-  L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`,
-    { maxZoom: 20, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO" }).addTo(mapObj);
+  // 지도 바탕: OpenStreetMap (키 필요 없음). 다크 모드는 CSS로 어둡게 바꿈
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(mapObj);
   logs.forEach(l => {
     const color = getComputedStyle(document.documentElement).getPropertyValue(typeOf(l.type).c.replace(/var\((.+)\)/, "$1")).trim() || "#8E8E93";
     const fr = Frames.all(l.id).filter(f => f.lat && f.lng);

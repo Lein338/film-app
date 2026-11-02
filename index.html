@@ -280,6 +280,8 @@ body.lock{overflow:hidden}
 .leaflet-popup-content{font:14px/1.4 var(--sans)}
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--bg);color:var(--ink);box-shadow:var(--glass-shadow)}
 .leaflet-container{background:var(--fill)!important;font-family:var(--sans)}
+.leaflet-tile-pane{filter:saturate(.55) contrast(.95)}
+@media (prefers-color-scheme:dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.35) brightness(.9) contrast(.9)}}
 .leaflet-control-attribution{background:color-mix(in srgb,var(--bg) 70%,transparent)!important;color:var(--muted)!important}
 .leaflet-control-attribution a{color:var(--muted)!important}
 .ex-title{font-size:28px;font-weight:700;margin:4px 0 0}
@@ -763,6 +765,6 @@ render();
 loadSheet(false);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
-<script src="geo.js"></script>
+<script src="geo.js?v=12"></script>
 </body>
 </html>
