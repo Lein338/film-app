@@ -60,20 +60,20 @@ function rows(sheets) {
 function addText(stack, s, font, color) {
   const t = stack.addText(s); t.font = font; t.textColor = color; t.lineLimit = 1; t.minimumScaleFactor = 0.7; return t;
 }
-// 유형별 가로 막대 (전체 대비 비율)
-function typeRow(parent, t, total, barW) {
+// 유형별 한 줄: 점 · 이름 · (막대) · 개수(오른쪽 정렬, 고정 폭)
+function typeRow(parent, t, total, barW, fs = 13) {
   const row = parent.addStack(); row.centerAlignContent();
   const dot = row.addStack(); dot.size = new Size(8, 8); dot.cornerRadius = 4; dot.backgroundColor = tc(t);
   row.addSpacer(6);
-  const lab = row.addStack(); lab.size = new Size(40, 0);
-  addText(lab, t.label, Font.systemFont(13), C.muted); lab.addSpacer();
+  const lab = row.addStack(); lab.size = new Size(38, 0);
+  addText(lab, t.label, Font.systemFont(fs), C.muted); lab.addSpacer();
   if (barW) {
     const track = row.addStack(); track.size = new Size(barW, 6); track.cornerRadius = 3; track.backgroundColor = C.track;
     const fill = track.addStack(); fill.size = new Size(Math.max(6, Math.round(barW * t.n / Math.max(1, total))), 6);
     fill.cornerRadius = 3; fill.backgroundColor = tc(t); track.addSpacer();
-    row.addSpacer(8);
   } else row.addSpacer();
-  addText(row, String(t.n), Font.semiboldSystemFont(13), C.ink);
+  const num = row.addStack(); num.size = new Size(28, 0); num.addSpacer();
+  const n = num.addText(String(t.n)); n.font = Font.semiboldSystemFont(fs); n.textColor = C.ink; n.lineLimit = 1;
 }
 
 async function build() {
@@ -110,38 +110,46 @@ async function build() {
   const n135 = rs.filter(r => r.fmt === "135").reduce((s, r) => s + r.qty, 0);
   const byType = TYPES.map(t => ({ ...t, n: rs.filter(r => r.type === t.k).reduce((s, r) => s + r.qty, 0) })).filter(t => t.n > 0);
 
-  const head = (stack) => {
-    const h = stack.addStack(); h.centerAlignContent();
+  const label = () => {
+    const h = w.addStack(); h.centerAlignContent();
     addText(h, "필름", Font.semiboldSystemFont(13), C.muted);
     if (d.stale) { h.addSpacer(4); addText(h, "· 사본", Font.systemFont(11), C.muted); }
-    stack.addSpacer(2);
-    const big = stack.addStack(); big.bottomAlignContent();
-    addText(big, String(total), Font.boldRoundedSystemFont(fam === "small" ? 40 : 44), C.ink);
-    big.addSpacer(3);
-    const u = big.addStack(); u.layoutVertically(); addText(u, "롤", Font.semiboldSystemFont(15), C.muted); u.addSpacer(5);
-    addText(stack, `135 ${n135}  ·  120 ${total - n135}`, Font.systemFont(12), C.muted);
+    h.addSpacer();
   };
+  const bigNum = (stack, size) => {
+    const big = stack.addStack(); big.bottomAlignContent();
+    addText(big, String(total), Font.boldRoundedSystemFont(size), C.ink);
+    big.addSpacer(3);
+    const u = big.addStack(); u.layoutVertically(); addText(u, "롤", Font.semiboldSystemFont(15), C.muted); u.addSpacer(Math.round(size * 0.12));
+  };
+  const sub = (stack) => addText(stack, `135 ${n135} · 120 ${total - n135}`, Font.systemFont(12), C.muted);
 
-  if (fam === "small") {
-    head(w); w.addSpacer();
-    byType.slice(0, 3).forEach((t, i) => { if (i) w.addSpacer(3); typeRow(w, t, total, 0); });
-  } else {
-    const body = w.addStack(); body.centerAlignContent();
-    const left = body.addStack(); left.layoutVertically(); head(left);
-    body.addSpacer(18);
-    const right = body.addStack(); right.layoutVertically();
-    const barW = fam === "large" ? 150 : 82;
-    byType.forEach((t, i) => { if (i) right.addSpacer(7); typeRow(right, t, total, barW); });
-    if (fam === "large") {
-      w.addSpacer(16);
-      const brands = {}; rs.forEach(r => brands[r.brand] = (brands[r.brand] || 0) + r.qty);
-      addText(w, "브랜드", Font.semiboldSystemFont(13), C.muted); w.addSpacer(6);
-      Object.entries(brands).sort((a, b) => b[1] - a[1]).slice(0, 6).forEach(([b, n]) => {
-        const r = w.addStack(); addText(r, b, Font.systemFont(15), C.ink); r.addSpacer(); addText(r, `${n}롤`, Font.systemFont(15), C.muted); w.addSpacer(5);
-      });
-    }
-  }
+  label();
   w.addSpacer();
+  if (fam === "small") {
+    bigNum(w, 40);
+    w.addSpacer(6);
+    byType.slice(0, 3).forEach((t, i) => { if (i) w.addSpacer(2); typeRow(w, t, total, 0, 12); });
+  } else if (fam === "large") {
+    bigNum(w, 52); w.addSpacer(2); sub(w);
+    w.addSpacer(16);
+    byType.forEach((t, i) => { if (i) w.addSpacer(9); typeRow(w, t, total, 196, 15); });
+    w.addSpacer(18);
+    addText(w, "브랜드", Font.semiboldSystemFont(13), C.muted); w.addSpacer(6);
+    const brands = {}; rs.forEach(r => brands[r.brand] = (brands[r.brand] || 0) + r.qty);
+    Object.entries(brands).sort((a, b) => b[1] - a[1]).slice(0, 5).forEach(([b, n], i) => {
+      if (i) w.addSpacer(5);
+      const r = w.addStack(); addText(r, b, Font.systemFont(15), C.ink); r.addSpacer(); addText(r, `${n}`, Font.semiboldSystemFont(15), C.ink);
+    });
+  } else {
+    // 중간: 왼쪽 아래 숫자, 오른쪽 아래 유형 목록 — 둘 다 아래쪽 기준선에 맞춤
+    const body = w.addStack(); body.bottomAlignContent();
+    const left = body.addStack(); left.layoutVertically();
+    bigNum(left, 46); left.addSpacer(2); sub(left);
+    body.addSpacer();
+    const right = body.addStack(); right.layoutVertically();
+    byType.forEach((t, i) => { if (i) right.addSpacer(8); typeRow(right, t, total, 64, 13); });
+  }
   return w;
 }
 
