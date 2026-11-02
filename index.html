@@ -396,19 +396,20 @@ function renderInv(){
   $("locf").innerHTML=hasLoc?[["all","모든 위치"],...LOCS.map(l=>[l,l]),["none","위치 없음"]].map(([k,t])=>`<button id="l-${k==="all"?"all":k==="none"?"none":LOCS.indexOf(k)}" data-locf="${k}" aria-pressed="${state.loc===k}">${t}</button>`).join(""):"";
 
   const locOk=r=>state.loc==="all"||(state.loc==="none"?!r.loc:r.loc===state.loc);
-  const shown=byFmt.filter(r=>state.types.has(r.type)&&locOk(r)).map(r=>({r,s:r.qty>0&&r.left===0?{g:"done",sort:0,text:"다 씀 · 시트 반영 전"}:status(r)}));
+  const isBulk=r=>r.exp==="벌크"||r.note==="벌크";
+  const shown=byFmt.filter(r=>state.types.has(r.type)&&locOk(r)).map(r=>({r,s:!isBulk(r)&&!(r.left>0)?{g:"done",sort:0,text:"다 씀 · 시트 수량 0"}:status(r)}));
   if(!state.rows.length)$("list").innerHTML=`<p class="empty">아직 시트를 불러오지 않았어요. 설정에서 시트 연결 주소와 키를 넣어 주세요.</p>`;
   else if(!shown.length)$("list").innerHTML=`<p class="empty">선택한 조건에 맞는 필름이 없어요.</p>`;
   else $("list").innerHTML=GROUPS.map(([g,glabel])=>{
     const items=shown.filter(x=>x.s.g===g).sort((a,b)=>a.s.sort-b.s.sort||a.r.brand.localeCompare(b.r.brand));
     if(!items.length)return"";
-    const n=items.reduce((s,x)=>s+(g==="done"?x.r.used:(x.r.left>0?x.r.left:0)),0);
-    return`<section class="${g}"><h2><span class="edge">${glabel}</span><span class="edge n">${n}롤</span></h2><ul>${items.map(({r,s})=>{
+    const n=items.reduce((s,x)=>s+(x.r.left>0?x.r.left:0),0);
+    return`<section class="${g}"><h2><span class="edge">${glabel}</span><span class="edge n">${g==="done"?`${items.length}종`:`${n}롤`}</span></h2><ul>${items.map(({r,s})=>{
       const t=typeOf(r.type),open=state.open===r.key;
       const title=r.name?`${esc(r.brand)}<small>${esc(r.name)}</small>`:`${esc(r.brand)}<small>${esc(r.iso)}</small>`;
       const meta=[r.fmt,r.iso&&`ISO ${r.iso}`,/^\d+$/.test(r.exp)&&`${r.exp}EXP`,t.label].filter(Boolean).join( " · ");
       const when=[s.text,r.loc&&`<span class="loc">${esc(r.loc)}</span>`,r.note&&r.note!=="벌크"?`<span class="note">${esc(r.note)}</span>`:""].filter(Boolean).join(" · ");
-      const qty=r.qty>0?`<span class="qty">${r.used?`<s>${r.qty}→</s>`:""}${r.left}</span>`:`<span class="qty bulk">벌크</span>`;
+      const qty=isBulk(r)?`<span class="qty bulk">벌크</span>`:`<span class="qty">${r.left>0?r.left:0}</span>`;
       let extra="";
       if(open&&state.form&&state.form.mode==="new"&&state.form.key===r.key){
         extra=formHtml({mode:"new",iso:+r.iso||0,advice:advice(r)});
